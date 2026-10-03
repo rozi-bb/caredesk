@@ -42,15 +42,17 @@ flowchart TD
 
 | Node | Job | Uses a model? |
 |---|---|---|
-| `triage` | Classify the latest message as `emergency`, `clinical`, or `normal` | Yes, `deepseek-flash` with structured output |
-| `emergency_response` | Write an incident record, return fixed emergency instructions and contacts | No |
+| `triage` | Classify the latest message as `emergency`, `clinical`, or `normal`. Unmistakable emergencies are caught by a keyword check first ([ADR-0016](adr/0016-emergency-keyword-precheck.md)) | Only when the keyword check does not match: `deepseek-flash` in JSON mode, 15-second timeout |
+| `emergency_response` | Write an incident record, return fixed emergency instructions and contacts ([ADR-0017](adr/0017-emergency-records-never-block.md)) | No |
 | `decline_clinical` | Return a fixed decline that redirects to nursing staff | No |
 | `agent` | Answer normal questions, calling tools when needed | Yes |
 | `tools` | Run the tool the model chose | No |
 
 The emergency and clinical paths return fixed text. They do not depend on a model deciding to say the right thing.
 
-**Triage fails toward safety.** If the triage call errors or times out, the message goes down the emergency path. Showing emergency contacts by mistake is cheap; missing an emergency is not.
+**Triage fails toward safety.** If the triage call errors or times out, the message goes down the emergency path and the failure is logged. Showing emergency contacts by mistake is cheap; missing an emergency is not. Because a broken classifier then looks like a very cautious one, an integration test calls the real classifier directly.
+
+State carries `route` and `incident_id` alongside the messages, so evaluations can see which path a message took.
 
 ## 3. Identity
 
@@ -116,6 +118,5 @@ Test layers:
 | Decision | Options | Needed by |
 |---|---|---|
 | Evaluation judge | Must be a different provider from the answering model | First LLM-as-judge evaluation |
-| Emergency keyword pre-check before triage | Yes or no | Triage feature |
 
 Each becomes an ADR once decided.

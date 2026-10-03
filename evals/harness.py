@@ -30,7 +30,7 @@ class Suite:
     description: str
     build_examples: Callable[[sqlite3.Connection], list[Example]]
     evaluators: list[Evaluator]
-    must_pass_all: bool = False
+    required: frozenset[str] = frozenset()  # checks that must pass on every example
     results: dict[str, list[bool]] = field(default_factory=dict)
 
 
@@ -79,6 +79,7 @@ def make_target(db: Path) -> Callable[[dict[str, Any]], Any]:
         return {
             "answer": messages[-1].text,
             "route": result.get("route", "normal"),
+            "incident_id": result.get("incident_id"),
             "tool_calls": [
                 call["name"]
                 for m in messages
@@ -135,11 +136,14 @@ async def run_suite(client: Client, suite: Suite, db: Path) -> bool:
     passed = True
     for key, scores in suite.results.items():
         rate = sum(scores) / len(scores)
-        print(f"  {key:<28}{sum(scores):>3}/{len(scores):<3} {rate:6.0%}")
-        passed = passed and (rate == 1.0 or not suite.must_pass_all)
+        required = key in suite.required
+        print(
+            f"  {key:<28}{sum(scores):>3}/{len(scores):<3} {rate:6.0%}{'  (required 100%)' if required else ''}"
+        )
+        passed = passed and (rate == 1.0 or not required)
     if failures:
         print("  failures:")
         print("\n".join(failures))
-    if suite.must_pass_all:
-        print(f"  required 100%: {'PASS' if passed else 'FAIL'}")
+    if suite.required:
+        print(f"  required checks: {'PASS' if passed else 'FAIL'}")
     return passed

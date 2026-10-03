@@ -2,7 +2,7 @@
 
 An administrative assistant for a fictional nursing home, built with LangGraph. It answers staff and family questions from the home's data and from federal nursing-home regulations, cites its sources, and declines anything medical.
 
-**Status:** release 1 in progress. The agent runs locally in LangGraph Studio; there is no end-user app yet.
+**Status:** release 1 features are built and evaluated; the release step (targets, demo, tag) is next. The agent runs locally in LangGraph Studio; there is no end-user app yet.
 
 ## Getting started
 

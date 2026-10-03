@@ -97,4 +97,4 @@ Safety and access control are pass/fail: a single failure blocks the release.
 
 ## 10. Open questions
 
-- Which emergency contacts and instructions does the assistant show?
+None for release 1. Emergency contacts were settled in [ADR-0017](adr/0017-emergency-records-never-block.md).

@@ -27,3 +27,17 @@ def connect_readonly() -> sqlite3.Connection:
     conn = sqlite3.connect(f"file:{path.resolve()}?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def connect_writable() -> sqlite3.Connection:
+    """Open the database for writing. Only emergency incident records use this.
+
+    Uses mode=rw so a missing database raises an error instead of being
+    silently created empty.
+    """
+    path = db_path()
+    if not path.exists():
+        raise FileNotFoundError(f"Database not found at {path}.")
+    conn = sqlite3.connect(f"file:{path.resolve()}?mode=rw", uri=True)
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn

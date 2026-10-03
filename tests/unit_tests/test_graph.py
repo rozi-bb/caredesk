@@ -12,12 +12,14 @@ from langchain_core.messages import (
     ToolMessage,
 )
 from langchain_core.outputs import ChatResult
+from langchain_core.runnables import RunnableLambda
 from langgraph.checkpoint.memory import InMemorySaver
 from pydantic import Field
 
 from agent.context import Context
 from agent.graph import build_graph
 from agent.tools import TOOLS
+from agent.triage import TriageResult
 
 pytestmark = pytest.mark.anyio
 
@@ -43,6 +45,9 @@ def replies(*messages: str | AIMessage) -> Iterator[AIMessage]:
     )
 
 
+NORMAL = RunnableLambda(lambda _: TriageResult(category="normal", reason="test"))
+
+
 def thread(thread_id: str) -> dict[str, Any]:
     return {"configurable": {"thread_id": thread_id}}
 
@@ -57,7 +62,7 @@ async def test_second_turn_sees_the_first_turn() -> None:
     model = RecordingModel(
         messages=replies("Nice to meet you, Rozi.", "Your name is Rozi.")
     )
-    graph = build_graph(model, checkpointer=InMemorySaver())
+    graph = build_graph(model, NORMAL, checkpointer=InMemorySaver())
 
     await graph.ainvoke({"messages": [HumanMessage("My name is Rozi.")]}, thread("a"))
     await graph.ainvoke({"messages": [HumanMessage("What is my name?")]}, thread("a"))
@@ -73,7 +78,7 @@ async def test_second_turn_sees_the_first_turn() -> None:
 
 async def test_threads_do_not_share_history() -> None:
     model = RecordingModel(messages=replies("Hello.", "Hello again."))
-    graph = build_graph(model, checkpointer=InMemorySaver())
+    graph = build_graph(model, NORMAL, checkpointer=InMemorySaver())
 
     await graph.ainvoke({"messages": [HumanMessage("My name is Rozi.")]}, thread("a"))
     await graph.ainvoke({"messages": [HumanMessage("What is my name?")]}, thread("b"))
@@ -98,7 +103,7 @@ async def test_tools_use_the_identity_from_the_run_context(db_env: Path) -> None
         model = RecordingModel(
             messages=replies(call("get_billing", resident="Harold Bennett"), "Done.")
         )
-        result = await build_graph(model).ainvoke(
+        result = await build_graph(model, NORMAL).ainvoke(
             {"messages": [HumanMessage("Show Harold's bill.")]},
             context=Context(user_id=ids[user], role="family"),
         )

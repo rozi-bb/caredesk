@@ -63,6 +63,7 @@ uv run python -m evals.run       # LangSmith evaluations (real API calls)
 - `src/agent/records.py`: every database query, with its permission filter
 - `src/agent/tools.py`: the tools the model can call; thin wrappers over `records.py` and `rules.py`
 - `src/agent/rules.py`: rules search over `corpus/` (F-tags and the handbook)
+- `src/agent/triage.py`: emergency and clinical triage, fixed responses, and the emergency incident write
 - `corpus/`: the rules text that is indexed; `scripts/build_rules_index.py` builds `data/rules_index.json`
 - `src/agent/db/`: database schema (`schema.sql`) and the fixed `REFERENCE_DATE` that stands for "today"
 - `scripts/seed_db.py`: generates the synthetic database into `data/` (git-ignored)

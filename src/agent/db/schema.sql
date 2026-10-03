@@ -65,10 +65,11 @@ CREATE TABLE visits (
         REFERENCES family_links (resident_id, family_member_id)
 );
 
--- reported_by_staff_id is NULL for records created automatically (emergencies).
+-- Records created automatically from emergency messages may have no known
+-- resident (resident_id NULL) and no staff reporter (reported_by_staff_id NULL).
 CREATE TABLE incidents (
     id                 INTEGER PRIMARY KEY,
-    resident_id        INTEGER NOT NULL REFERENCES residents (id),
+    resident_id        INTEGER REFERENCES residents (id),
     reported_by_staff_id INTEGER REFERENCES staff (id),
     occurred_at        TEXT NOT NULL,
     category           TEXT NOT NULL CHECK (category IN (

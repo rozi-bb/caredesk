@@ -1,6 +1,6 @@
 # ADR-0006: Triage first, fixed responses, fail toward emergency
 
-- Status: Accepted
+- Status: Accepted. The keyword pre-check left open below was decided in [ADR-0016](0016-emergency-keyword-precheck.md)
 - Date: 2026-10-03
 
 ## Context
