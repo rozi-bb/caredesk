@@ -1,6 +1,6 @@
 # ADR-0011: The Agent Server handles conversation persistence
 
-- Status: Accepted (to verify in feature 9.1)
+- Status: Accepted, verified in feature 9.1 (memory survived a server restart; see [iteration note](../iterations/9.1-conversation-memory.md))
 - Date: 2026-10-03
 
 ## Context

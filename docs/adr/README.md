@@ -16,4 +16,4 @@ Format: Status, Date, Context, Decision, Alternatives considered, Consequences. 
 | [0008](0008-release-1-agent-only-read-only.md) | Release 1 is agent-only and read-only | Accepted |
 | [0009](0009-no-hard-usage-limits.md) | No hard usage limits | Accepted |
 | [0010](0010-judge-from-a-different-provider.md) | Evaluation judge from a different provider | Accepted |
-| [0011](0011-agent-server-handles-persistence.md) | The Agent Server handles conversation persistence | Accepted |
+| [0011](0011-agent-server-handles-persistence.md) | The Agent Server handles conversation persistence | Accepted, verified |
