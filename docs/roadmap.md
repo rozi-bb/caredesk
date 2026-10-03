@@ -33,7 +33,7 @@ Each feature is one loop of build (step 9) → evaluate (step 16). If the evalua
 | # | Feature | PRD | Done when | Status |
 |---|---|---|---|---|
 | 9.1 | Conversation memory | F1 | The assistant answers from earlier turns in Studio, and still does after the server restarts | ✅ [note](iterations/9.1-conversation-memory.md) |
-| 9.2 | Read tools with access control | F2 | Permission filters pass unit tests; access-control evaluation is 100% | ⬜ |
+| 9.2 | Read tools with access control | F2 | Permission filters pass unit tests; access-control evaluation is 100% | ✅ [note](iterations/9.2-read-tools-access-control.md) |
 | 9.3 | Rules search with citations | F3 | F-tags chosen, handbook written, index built; first groundedness baseline recorded | ⬜ |
 | 9.4 | Emergency triage and clinical decline | F4, F5 | Safety evaluation is 100% | ⬜ |
 

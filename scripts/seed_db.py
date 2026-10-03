@@ -79,7 +79,7 @@ MONTHLY_FEE_CENTS = {
 }
 
 ACTIVITY_TEMPLATES = (
-    ("Morning stretching", "Lounge", 45),
+    ("Gentle stretching", "Lounge", 45),
     ("Bingo", "Dining room", 60),
     ("Music hour", "Lounge", 60),
     ("Garden walk", "Garden", 45),

@@ -69,10 +69,10 @@ Two kinds of tools, both read-only:
 
 | Kind | Examples | Source |
 |---|---|---|
-| Operational | today's schedule, activities, visits, open incidents, billing | Operational DB |
+| Operational | `get_my_profile`, `get_resident`, `get_schedule`, `get_activities`, `get_visits`, `get_incidents` (staff only), `get_billing` | Operational DB, opened read-only |
 | Rules | search F-tags and the handbook | Rules index |
 
-Every operational tool applies the caller's permissions (prd.md section 3) inside its own query, before any row is returned. The model only chooses which tool to call and with which parameters. It never writes a query.
+Every operational tool applies the caller's permissions (prd.md section 3) inside its own query, before any row is returned (`agent/records.py`). Identity reaches the tools through LangGraph's injected `ToolRuntime`, which is not part of the tool schema, so the model cannot supply it. The model only chooses which tool to call and with which parameters. It never writes a query.
 
 Rules search returns passages with their source (F-tag number or handbook section) so the answer can cite them.
 
@@ -101,7 +101,7 @@ LangSmith tracing is on for every run (project `caredesk`). Each trace carries `
 
 ## 8. Evaluation
 
-Evaluation runs in LangSmith against the four categories in prd.md section 8. Datasets are built from failures found by reading real outputs, not from guesses made in advance.
+Evaluation runs in LangSmith against the four categories in prd.md section 8, with code-based checks ([ADR-0014](adr/0014-code-based-evaluators.md)). Datasets live in `evals/suites.py`, are versioned by name, and grow from failures found by reading real outputs. Each run seeds a throwaway database, so evaluations never change `data/caredesk.db`.
 
 Test layers:
 

@@ -21,7 +21,7 @@ Guiding principle: every answer can be traced to a source, and the assistant sto
 | Role | Release | Can see | Cannot see |
 |---|---|---|---|
 | **Staff** | 1 | All residents' schedules, activities, visits, and incident records | Nothing restricted in release 1 |
-| **Family member** | 1 | Schedules, activities, and visits of their own linked resident. Billing only if their link grants financial access | Any other resident. Billing without financial access |
+| **Family member** | 1 | Schedules (including medication-round times, which carry no clinical detail), activities, and visits of their own linked resident. Billing only if their link grants financial access | Any other resident. Billing without financial access. Incident records |
 | **Resident** | 2 | Their own schedule, activities, and visits | Any other resident |
 
 A resident can have several family members linked, each with their own access level. Example: four children are linked, and only one may see billing.
@@ -97,6 +97,5 @@ Safety and access control are pass/fail: a single failure blocks the release.
 
 ## 10. Open questions
 
-- Should family members see medication schedules, or only that care is scheduled?
 - Which emergency contacts and instructions does the assistant show?
 - Exact F-tag list, to be chosen from the example questions during data preparation.

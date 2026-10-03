@@ -34,6 +34,14 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
    uv run langgraph dev
    ```
 
+## Evaluation
+
+Runs the evaluation suites in LangSmith against a freshly seeded copy of the database:
+
+```bash
+uv run python -m evals.run
+```
+
 ## Documentation
 
 | Document | What it covers |

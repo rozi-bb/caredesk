@@ -52,15 +52,20 @@ uv run pytest tests/integration_tests   # integration tests, real API calls
 uv run ruff check .              # lint
 uv run ruff format .             # format
 uv run mypy --strict src         # type check
+uv run python -m evals.run       # LangSmith evaluations (real API calls)
 ```
 
 ## Layout
 
 - `langgraph.json`: tells the server where the graph is (`./src/agent/graph.py:graph`)
 - `src/agent/graph.py`: graph entry point
+- `src/agent/context.py`: the caller's identity, passed per run
+- `src/agent/records.py`: every database query, with its permission filter
+- `src/agent/tools.py`: the tools the model can call; thin wrappers over `records.py`
 - `src/agent/db/`: database schema (`schema.sql`) and the fixed `REFERENCE_DATE` that stands for "today"
 - `scripts/seed_db.py`: generates the synthetic database into `data/` (git-ignored)
 - `tests/unit_tests/`, `tests/integration_tests/`
+- `evals/`: evaluation datasets and checks (`suites.py`) and the runner (`run.py`)
 - `docs/`: see the table under Project
 
 ## Secrets
