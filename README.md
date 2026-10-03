@@ -33,8 +33,8 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 | Document | What it covers |
 |---|---|
 | [Product requirements](docs/prd.md) | What CareDesk does, for whom, and its rules |
-| [Architecture](docs/architecture.md) | How it is built *(not written yet)* |
-| [Roadmap](docs/roadmap.md) | Order of work *(not written yet)* |
+| [Architecture](docs/architecture.md) | How it is built |
+| [Roadmap](docs/roadmap.md) | Order of work |
 | [Decision records](docs/adr/) | Why each decision was made |
 
 ## Data

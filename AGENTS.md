@@ -9,8 +9,8 @@ CareDesk, an administrative assistant for a fictional nursing home. Read these b
 | Document | What it covers |
 |---|---|
 | `docs/prd.md` | What we build, for whom, release scope, and the product rules |
-| `docs/architecture.md` | How it is built (not written yet) |
-| `docs/roadmap.md` | Order of work (not written yet) |
+| `docs/architecture.md` | How it is built |
+| `docs/roadmap.md` | Order of work |
 | `docs/adr/` | Why each decision was made |
 
 Do not copy content from those documents into this file. Link to them.
