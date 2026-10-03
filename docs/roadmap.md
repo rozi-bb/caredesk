@@ -22,7 +22,7 @@ Legend: ✅ done · 🔄 in progress · ⬜ not started
 | 6 | Roadmap | ✅ |
 | 6a | Push to a private GitHub repository, so history is backed up and visible from the planning stage | ✅ |
 | 7 | Turn on tracing and confirm traces reach LangSmith | ✅ |
-| 8 | Run the baseline graph in Studio | ⬜ |
+| 8 | Run the baseline graph in Studio | ✅ |
 | 8a | Prepare data: operational seed script and DB | ⬜ |
 
 ### Features (one at a time, each evaluated before the next)
