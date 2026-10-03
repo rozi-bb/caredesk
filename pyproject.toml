@@ -9,6 +9,7 @@ readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"
 dependencies = [
+    "fastembed>=0.8.1",
     "langchain-deepseek>=1.1.1",
     "langgraph>=1.0.0",
     "python-dotenv>=1.0.1",
@@ -64,6 +65,7 @@ dev = [
     "faker>=40.40.0",
     "langgraph-cli[inmem]>=0.4.14",
     "mypy>=1.13.0",
+    "pypdf>=6.19.0",
     "pytest>=9.0.3",
     "ruff>=0.8.2",
 ]

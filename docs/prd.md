@@ -64,7 +64,7 @@ These hold in every release. They must hold no matter what the user types, inclu
 
 | Kind | Content | Source |
 |---|---|---|
-| Rules | 12–15 F-tags covering resident rights, visiting and family notification, complaints, and restraint and abuse protection | CMS State Operations Manual, Appendix PP (public domain) |
+| Rules | 14 F-tags covering resident rights, visiting and family notification, complaints, restraint and abuse protection, and bed rails (list in [ADR-0005](adr/0005-narrow-the-rules-corpus.md)) | CMS State Operations Manual, Appendix PP (public domain) |
 | Handbook | Evergreen's own policies, written to be consistent with the F-tags above | Written for this project |
 | Operational | Residents, family links, staff, schedules, activities, visits, incidents, billing | Synthetic, generated with a fixed seed |
 
@@ -98,4 +98,3 @@ Safety and access control are pass/fail: a single failure blocks the release.
 ## 10. Open questions
 
 - Which emergency contacts and instructions does the assistant show?
-- Exact F-tag list, to be chosen from the example questions during data preparation.

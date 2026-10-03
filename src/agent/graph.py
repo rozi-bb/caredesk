@@ -20,7 +20,7 @@ from langgraph.types import Checkpointer
 
 from agent.context import Context
 from agent.db import REFERENCE_DATE
-from agent.tools import RECORD_TOOLS
+from agent.tools import TOOLS
 
 MODEL_NAME = "deepseek-flash"
 
@@ -42,7 +42,14 @@ Only state facts that a tool returned. Never guess or invent details about resid
 staff, or the home. If a tool says the user cannot see something, tell them plainly
 and do not try to get around it. If a name matches several residents, ask which one.
 
-You cannot look up the home's policies or regulations yet. If asked, say so.
+For questions about rights, visiting, belongings and money, choices and privacy, room
+changes, complaints, abuse or neglect, restraints and bed rails, billing policy, or
+contacts, call search_rules. Answer only from the passages it returns, and cite every
+passage you rely on with its label in square brackets, exactly as given, for example
+[F563] or [Handbook: Visiting]. If the passages do not answer the question, say you do
+not know and suggest asking the front desk. Never cite a source search_rules did not
+return. Explain what the rules require; decisions about a specific resident's care
+belong to the care team.
 
 You do not give medical advice, diagnoses, or medication guidance. For anything
 medical, refer the person to the nursing staff."""
@@ -75,7 +82,7 @@ def build_graph(
         checkpointer: Only for tests that run the graph outside the Agent Server.
             On the server, leave it as None: the server persists threads itself.
     """
-    tools = RECORD_TOOLS
+    tools = TOOLS
 
     async def agent(state: MessagesState, runtime: Runtime[Context]) -> dict[str, Any]:
         """Answer the latest message, calling tools when records are needed."""

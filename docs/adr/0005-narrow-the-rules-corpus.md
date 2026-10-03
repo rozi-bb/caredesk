@@ -1,6 +1,6 @@
 # ADR-0005: Narrow the rules corpus to selected F-tags
 
-- Status: Accepted (exact tag list pending)
+- Status: Accepted. Tag list chosen in feature 9.3 ([iteration note](../iterations/9.3-rules-search-citations.md))
 - Date: 2026-09-16
 
 ## Context

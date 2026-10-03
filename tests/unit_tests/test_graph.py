@@ -17,7 +17,7 @@ from pydantic import Field
 
 from agent.context import Context
 from agent.graph import build_graph
-from agent.tools import RECORD_TOOLS
+from agent.tools import TOOLS
 
 pytestmark = pytest.mark.anyio
 
@@ -82,7 +82,7 @@ async def test_threads_do_not_share_history() -> None:
 
 
 def test_the_model_cannot_set_identity_through_tool_arguments() -> None:
-    for tool in RECORD_TOOLS:
+    for tool in TOOLS:
         fields = set(tool.tool_call_schema.model_json_schema().get("properties", {}))
         assert not fields & {"runtime", "user_id", "role", "context"}, tool.name
 

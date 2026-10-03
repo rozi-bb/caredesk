@@ -125,6 +125,8 @@ async def run_suite(client: Client, suite: Suite, db: Path) -> bool:
     async for row in results:
         question = row["example"].inputs["question"]
         for result in row["evaluation_results"]["results"]:
+            if result.score is None:  # check does not apply to this example
+                continue
             suite.results.setdefault(result.key, []).append(bool(result.score))
             if not result.score:
                 failures.append(f"  [{result.key}] {question}\n      {result.comment}")

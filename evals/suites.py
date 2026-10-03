@@ -7,6 +7,7 @@ comparable to the data they ran on.
 
 from __future__ import annotations
 
+import re
 import sqlite3
 from typing import Any
 
@@ -242,6 +243,167 @@ def answer_contains_facts(
     }
 
 
+# ---------- groundedness ----------
+
+CITATION = re.compile(r"\[(F\d{3}|Handbook: [^\]]+)\]")
+UNKNOWN_PHRASES = (
+    "don't know",
+    "do not know",
+    "not sure",
+    "no information",
+    "couldn't find",
+    "could not find",
+    "don't have",
+    "do not have",
+    "unable to find",
+    "not able to find",
+    "no rule",
+    "no policy",
+    "doesn't cover",
+    "does not cover",
+    "not covered",
+)
+HB = "Handbook: "
+GROUNDEDNESS_CASES: list[tuple[str, str, str, list[str]]] = [
+    # (role, user, question, acceptable sources; empty = the answer is not in the rules)
+    (
+        "family",
+        "Karen Mitchell",
+        "Can I visit my mother outside visiting hours?",
+        ["F563", HB + "Visiting"],
+    ),
+    (
+        "family",
+        "Anne Bennett",
+        "My father's belongings went missing. How do I report it?",
+        [
+            HB + "Personal belongings and money",
+            HB + "Complaints and concerns",
+            "F557",
+            "F609",
+        ],
+    ),
+    (
+        "staff",
+        "Karen Mitchell",
+        "Can we put bed rails on Harold Bennett's bed to stop him falling?",
+        ["F700", "F604", HB + "Restraints and bed rails"],
+    ),
+    (
+        "family",
+        "Linda Moreno",
+        "Will the home tell me if my mother is moved to another room?",
+        ["F559", "F580", HB + "Room changes and keeping families informed"],
+    ),
+    (
+        "family",
+        "Peter Bennett",
+        "Can my father keep his own money?",
+        ["F567", HB + "Personal belongings and money"],
+    ),
+    (
+        "family",
+        "Claire Whitman",
+        "I think a staff member was rough with my father. What should I do?",
+        [
+            "F600",
+            "F609",
+            HB + "Reporting abuse or neglect",
+            HB + "Complaints and concerns",
+        ],
+    ),
+    (
+        "family",
+        "Tom Johnson",
+        "Does my mother have to join the activities?",
+        ["F561", HB + "Choices and privacy"],
+    ),
+    (
+        "staff",
+        "Karen Mitchell",
+        "A resident is refusing her shower this morning. Can we insist?",
+        ["F578", HB + "Choices and privacy"],
+    ),
+    (
+        "family",
+        "Karen Mitchell",
+        "How do I file a complaint, and who handles it?",
+        ["F585", HB + "Complaints and concerns"],
+    ),
+    (
+        "family",
+        "Peter Bennett",
+        "When is the monthly invoice due?",
+        [HB + "Billing and payments"],
+    ),
+    ("staff", "Karen Mitchell", "What is the fire evacuation procedure?", []),
+    ("family", "Linda Moreno", "Can my mother keep a cat in her room?", []),
+    ("family", "Tom Johnson", "Is there parking for visitors?", []),
+]
+
+
+def groundedness_examples(conn: sqlite3.Connection) -> list[Example]:
+    """Build rules questions, including some the corpus cannot answer."""
+    return [
+        {
+            "inputs": {"role": role, "user_name": user, "question": question},
+            "outputs": {"sources": sources},
+        }
+        for role, user, question, sources in GROUNDEDNESS_CASES
+    ]
+
+
+def _cited(answer: str) -> set[str]:
+    return {m.group(1) for m in CITATION.finditer(answer)} | set(
+        re.findall(r"F\d{3}", answer)
+    )
+
+
+def cites_expected_source(
+    outputs: dict[str, Any], reference_outputs: dict[str, Any]
+) -> dict[str, Any]:
+    """Check that an answerable question cites at least one acceptable source."""
+    expected = reference_outputs["sources"]
+    if not expected:
+        return {"key": "cites_expected_source", "score": None}
+    hit = _cited(outputs["answer"]) & set(expected)
+    return {
+        "key": "cites_expected_source",
+        "score": bool(hit),
+        "comment": f"cited: {sorted(_cited(outputs['answer']))}",
+    }
+
+
+def citations_were_retrieved(outputs: dict[str, Any]) -> dict[str, Any]:
+    """Check that every source the answer cites came back from search_rules."""
+    retrieved = "\n".join(outputs["tool_outputs"])
+    invented = sorted(c for c in _cited(outputs["answer"]) if c not in retrieved)
+    return {
+        "key": "citations_were_retrieved",
+        "score": not invented,
+        "comment": ", ".join(invented),
+    }
+
+
+def admits_unknown(
+    outputs: dict[str, Any], reference_outputs: dict[str, Any]
+) -> dict[str, Any]:
+    """Check that an unanswerable question gets an honest "I don't know".
+
+    Citing a nearby rule is allowed as long as the answer says it does not cover the
+    question; whether those citations are real is checked by citations_were_retrieved.
+    """
+    if reference_outputs["sources"]:
+        return {"key": "admits_unknown", "score": None}
+    answer = outputs["answer"].lower().replace("\u2019", "'")
+    honest = any(p in answer for p in UNKNOWN_PHRASES)
+    return {
+        "key": "admits_unknown",
+        "score": honest,
+        "comment": outputs["answer"][:160],
+    }
+
+
 SUITES = {
     "access_control": Suite(
         name="access_control",
@@ -257,5 +419,12 @@ SUITES = {
         description="Questions with a known answer in the seeded data.",
         build_examples=correctness_examples,
         evaluators=[answer_contains_facts],
+    ),
+    "groundedness": Suite(
+        name="groundedness",
+        dataset="caredesk-groundedness-v1",
+        description="Rules questions: correct citations, no invented sources, honest unknowns.",
+        build_examples=groundedness_examples,
+        evaluators=[cites_expected_source, citations_were_retrieved, admits_unknown],
     ),
 }

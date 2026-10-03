@@ -11,7 +11,7 @@ from collections.abc import Callable
 from langchain_core.tools import BaseTool, tool
 from langgraph.prebuilt import ToolRuntime
 
-from agent import records
+from agent import records, rules
 from agent.context import Context
 from agent.db import connect_readonly
 
@@ -101,6 +101,18 @@ def get_billing(resident: str = "", *, runtime: ToolRuntime[Context]) -> str:
     return _with_db(records.billing, resident, runtime=runtime)
 
 
+@tool
+def search_rules(query: str) -> str:
+    """Search the home's rules: residents' rights, visiting, belongings and money, choices and privacy, room changes, complaints, abuse reporting, restraints and bed rails, billing policy, and contacts.
+
+    Returns passages, each labelled with the source to cite, e.g. [F563] or [Handbook: Visiting].
+
+    Args:
+        query: The question, in plain words.
+    """
+    return rules.format_passages(rules.search(query, k=5))
+
+
 RECORD_TOOLS: list[BaseTool] = [
     get_my_profile,
     get_resident,
@@ -110,3 +122,4 @@ RECORD_TOOLS: list[BaseTool] = [
     get_incidents,
     get_billing,
 ]
+TOOLS: list[BaseTool] = [*RECORD_TOOLS, search_rules]

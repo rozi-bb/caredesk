@@ -20,3 +20,4 @@ Format: Status, Date, Context, Decision, Alternatives considered, Consequences. 
 | [0012](0012-family-see-medication-round-times.md) | Family members see medication-round times | Accepted |
 | [0013](0013-out-of-scope-residents-look-nonexistent.md) | Residents outside the user's scope look nonexistent | Accepted |
 | [0014](0014-code-based-evaluators.md) | Code-based evaluators in release 1 | Accepted |
+| [0015](0015-local-embeddings-in-memory-index.md) | Local embeddings and an in-memory vector index | Accepted |

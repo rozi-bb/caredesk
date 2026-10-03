@@ -70,7 +70,7 @@ Two kinds of tools, both read-only:
 | Kind | Examples | Source |
 |---|---|---|
 | Operational | `get_my_profile`, `get_resident`, `get_schedule`, `get_activities`, `get_visits`, `get_incidents` (staff only), `get_billing` | Operational DB, opened read-only |
-| Rules | search F-tags and the handbook | Rules index |
+| Rules | `search_rules`: top 5 passages above a similarity threshold, each labelled with its source | Rules index |
 
 Every operational tool applies the caller's permissions (prd.md section 3) inside its own query, before any row is returned (`agent/records.py`). Identity reaches the tools through LangGraph's injected `ToolRuntime`, which is not part of the tool schema, so the model cannot supply it. The model only chooses which tool to call and with which parameters. It never writes a query.
 
@@ -81,7 +81,7 @@ Rules search returns passages with their source (F-tag number or handbook sectio
 | Store | Holds | Written by |
 |---|---|---|
 | Operational DB (SQLite file) | Residents, family links and access levels, staff, schedules, activities, visits, incidents, billing | A seed script with a fixed seed. At runtime, only `emergency_response` writes, and only to incidents. |
-| Rules index | Chunks of the selected F-tags and the handbook, with embeddings | An ingest script, run once |
+| Rules index (`data/rules_index.json`) | 204 passages from `corpus/` (14 F-tags and the handbook), embedded locally | `scripts/build_rules_index.py` |
 | Conversation state | Messages per thread | The Agent Server. No custom checkpointer is configured. |
 
 "Today" inside the data is fixed at 2026-10-05 (`REFERENCE_DATE` in `src/agent/db`). Tools use it instead of the real date, so answers about "today" and evaluation results do not drift from day to day.
@@ -92,7 +92,7 @@ Rules search returns passages with their source (F-tag number or handbook sectio
 |---|---|
 | Triage | `deepseek-flash` |
 | Agent answers | `deepseek-flash` by default; `deepseek-v4-pro` if evaluation shows flash is not good enough |
-| Embeddings | Not decided (section 9) |
+| Embeddings | `BAAI/bge-small-en-v1.5`, local through fastembed ([ADR-0015](adr/0015-local-embeddings-in-memory-index.md)) |
 | Evaluation judge | Not decided (section 9) |
 
 ## 7. Observability
@@ -115,8 +115,6 @@ Test layers:
 
 | Decision | Options | Needed by |
 |---|---|---|
-| Embedding model | OpenAI (needs credit) or a local model | Rules search feature |
-| Vector store | To be chosen with the embedding model | Rules search feature |
 | Evaluation judge | Must be a different provider from the answering model | First LLM-as-judge evaluation |
 | Emergency keyword pre-check before triage | Yes or no | Triage feature |
 
