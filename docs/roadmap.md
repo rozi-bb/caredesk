@@ -21,13 +21,14 @@ Legend: ✅ done · 🔄 in progress · ⬜ not started
 | 5 | Architecture | ✅ draft |
 | 6 | Roadmap | ✅ |
 | 6a | Push to a private GitHub repository, so history is backed up and visible from the planning stage | ✅ |
+| 6b | Write ADRs for the decisions already made ([adr/](adr/)) | ✅ |
 | 7 | Turn on tracing and confirm traces reach LangSmith | ✅ |
 | 8 | Run the baseline graph in Studio | ✅ |
 | 8a | Prepare data: operational seed script and DB | ✅ |
 
 ### Features (one at a time, each evaluated before the next)
 
-Each feature is one loop of build (step 9) → evaluate (step 16). If the evaluation fails, fix before moving on. Each loop ends with a short note in `docs/iterations/`.
+Each feature is one loop of build (step 9) → evaluate (step 16). If the evaluation fails, fix before moving on. Each loop ends with a short note in `docs/iterations/` and an ADR for every decision made along the way.
 
 | # | Feature | PRD | Done when | Status |
 |---|---|---|---|---|
