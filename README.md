@@ -1,61 +1,42 @@
-# New LangGraph Project
+# CareDesk
 
-[![CI](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/unit-tests.yml)
-[![Integration Tests](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/integration-tests.yml/badge.svg)](https://github.com/langchain-ai/new-langgraph-project/actions/workflows/integration-tests.yml)
+An administrative assistant for a fictional nursing home, built with LangGraph. It answers staff and family questions from the home's data and from federal nursing-home regulations, cites its sources, and declines anything medical.
 
-This template demonstrates a simple application implemented using [LangGraph](https://github.com/langchain-ai/langgraph), designed for showing how to get started with [LangGraph Server](https://langchain-ai.github.io/langgraph/concepts/langgraph_server/#langgraph-server) and using [LangGraph Studio](https://langchain-ai.github.io/langgraph/concepts/langgraph_studio/), a visual debugging IDE.
+**Status:** release 1 in progress. The agent runs locally in LangGraph Studio; there is no end-user app yet.
 
-<div align="center">
-  <img src="./static/studio_ui.png" alt="Graph view in LangGraph studio UI" width="75%" />
-</div>
+## Getting started
 
-The core logic defined in `src/agent/graph.py`, showcases an single-step application that responds with a fixed string and the configuration provided.
+Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
-You can extend this graph to orchestrate more complex agentic workflows that can be visualized and debugged in LangGraph Studio.
+1. Install dependencies:
 
-## Getting Started
+   ```bash
+   uv sync
+   ```
 
-1. Install dependencies, along with the [LangGraph CLI](https://langchain-ai.github.io/langgraph/concepts/langgraph_cli/), which will be used to run the server.
+2. Create your environment file and fill in the keys:
 
-```bash
-cd path/to/your/app
-pip install -e . "langgraph-cli[inmem]"
-```
+   ```bash
+   cp .env.example .env
+   ```
 
-2. (Optional) Customize the code and project as needed. Create a `.env` file if you need to use secrets.
+   You need a LangSmith API key and a DeepSeek API key.
 
-```bash
-cp .env.example .env
-```
+3. Start the local server and open Studio:
 
-If you want to enable LangSmith tracing, add your LangSmith API key to the `.env` file.
+   ```bash
+   uv run langgraph dev
+   ```
 
-```text
-# .env
-LANGSMITH_API_KEY=lsv2...
-```
+## Documentation
 
-3. Start the LangGraph Server.
+| Document | What it covers |
+|---|---|
+| [Product requirements](docs/prd.md) | What CareDesk does, for whom, and its rules |
+| [Architecture](docs/architecture.md) | How it is built *(not written yet)* |
+| [Roadmap](docs/roadmap.md) | Order of work *(not written yet)* |
+| [Decision records](docs/adr/) | Why each decision was made |
 
-```shell
-langgraph dev
-```
+## Data
 
-For more information on getting started with LangGraph Server, [see here](https://langchain-ai.github.io/langgraph/tutorials/langgraph-platform/local-server/).
-
-## How to customize
-
-1. **Define runtime context**: Modify the `Context` class in the `graph.py` file to expose the arguments you want to configure per assistant. For example, in a chatbot application you may want to define a dynamic system prompt or LLM to use. For more information on runtime context in LangGraph, [see here](https://langchain-ai.github.io/langgraph/agents/context/?h=context#static-runtime-context).
-
-2. **Extend the graph**: The core logic of the application is defined in [graph.py](./src/agent/graph.py). You can modify this file to add new nodes, edges, or change the flow of information.
-
-## Development
-
-While iterating on your graph in LangGraph Studio, you can edit past state and rerun your app from previous states to debug specific nodes. Local changes will be automatically applied via hot reload.
-
-Follow-up requests extend the same thread. You can create an entirely new thread, clearing previous history, using the `+` button in the top right.
-
-For more advanced features and examples, refer to the [LangGraph documentation](https://langchain-ai.github.io/langgraph/). These resources can help you adapt this template for your specific use case and build more sophisticated conversational agents.
-
-LangGraph Studio also integrates with [LangSmith](https://smith.langchain.com/) for more in-depth tracing and collaboration with teammates, allowing you to analyze and optimize your chatbot's performance.
-
+All resident, family, and staff data in this project is synthetic. Regulation text comes from the CMS State Operations Manual, Appendix PP, which is in the public domain.

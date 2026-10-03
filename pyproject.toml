@@ -1,9 +1,9 @@
 [project]
-name = "agent"
+name = "caredesk"
 version = "0.0.1"
-description = "Starter template for making a new agent LangGraph."
+description = "Administrative assistant for a fictional nursing home, built with LangGraph."
 authors = [
-    { name = "William Fu-Hinthorn", email = "13333726+hinthornw@users.noreply.github.com" },
+    { name = "Rozi" },
 ]
 readme = "README.md"
 license = { text = "MIT" }
