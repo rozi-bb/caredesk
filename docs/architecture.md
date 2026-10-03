@@ -84,6 +84,8 @@ Rules search returns passages with their source (F-tag number or handbook sectio
 | Rules index | Chunks of the selected F-tags and the handbook, with embeddings | An ingest script, run once |
 | Conversation state | Messages per thread | The Agent Server. No custom checkpointer is configured. |
 
+"Today" inside the data is fixed at 2026-10-05 (`REFERENCE_DATE` in `src/agent/db`). Tools use it instead of the real date, so answers about "today" and evaluation results do not drift from day to day.
+
 ## 6. Models
 
 | Use | Model |

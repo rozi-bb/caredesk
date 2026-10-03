@@ -22,7 +22,13 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
    You need a LangSmith API key and a DeepSeek API key.
 
-3. Start the local server and open Studio:
+3. Build the sample database (synthetic data, rebuilt identically every time):
+
+   ```bash
+   uv run python scripts/seed_db.py
+   ```
+
+4. Start the local server and open Studio:
 
    ```bash
    uv run langgraph dev

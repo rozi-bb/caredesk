@@ -58,6 +58,8 @@ uv run mypy --strict src         # type check
 
 - `langgraph.json`: tells the server where the graph is (`./src/agent/graph.py:graph`)
 - `src/agent/graph.py`: graph entry point
+- `src/agent/db/`: database schema (`schema.sql`) and the fixed `REFERENCE_DATE` that stands for "today"
+- `scripts/seed_db.py`: generates the synthetic database into `data/` (git-ignored)
 - `tests/unit_tests/`, `tests/integration_tests/`
 - `docs/`: see the table under Project
 
