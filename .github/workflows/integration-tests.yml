@@ -1,12 +1,11 @@
-# This workflow will run integration tests for the current project once per day
+# Runs integration tests on demand. The daily schedule from the template is
+# off until the project has integration tests and repository secrets for them.
 
 name: Integration Tests
 permissions:
   contents: read
 
 on:
-  schedule:
-    - cron: "37 14 * * *" # Run at 7:37 AM Pacific Time (14:37 UTC) every day
   workflow_dispatch: # Allows triggering the workflow manually in GitHub UI
 
 # If another scheduled run starts while this workflow is still running,
