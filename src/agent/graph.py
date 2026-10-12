@@ -120,7 +120,7 @@ def build_graph(
     model: BaseChatModel | None = None,
     classifier: Runnable[Any, Any] | None = None,
     checkpointer: Checkpointer = None,
-) -> CompiledStateGraph[State, Context, State, State]:
+) -> CompiledStateGraph[State, Context, MessagesState, State]:
     """Build the CareDesk graph.
 
     Args:
@@ -177,8 +177,9 @@ def build_graph(
             state["route"], "agent"
         )
 
-    builder: StateGraph[State, Context, State, State] = StateGraph(
-        State, context_schema=Context
+    # Callers send only messages; route and incident_id are set by triage alone.
+    builder: StateGraph[State, Context, MessagesState, State] = StateGraph(
+        State, input_schema=MessagesState, context_schema=Context
     )
     builder.add_node("triage", triage)
     builder.add_node("emergency_response", emergency_response)

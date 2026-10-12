@@ -112,6 +112,24 @@ async def test_clinical_question_gets_the_fixed_decline(db_env: Path) -> None:
     assert result["messages"][-1].text == CLINICAL_RESPONSE
 
 
+def test_callers_can_only_send_messages() -> None:
+    graph = build_graph(no_agent(), classifier("normal"))
+    assert set(graph.get_input_jsonschema()["properties"]) == {"messages"}
+    assert {"route", "incident_id"} <= set(graph.get_output_jsonschema()["properties"])
+
+
+async def test_route_sent_by_caller_is_ignored(db_env: Path) -> None:
+    graph = build_graph(no_agent(), classifier("clinical"))
+    result = await graph.ainvoke(
+        {
+            "messages": [HumanMessage("Should he take an extra dose?")],
+            "route": "normal",
+        },
+        context=Context(),
+    )
+    assert result["route"] == "clinical"
+
+
 class AnsweringModel(GenericFakeChatModel):
     """Fake agent model that accepts tools and returns scripted answers."""
 
