@@ -2,7 +2,7 @@
 
 An administrative assistant for a fictional nursing home, built with LangGraph. It answers staff and family questions from the home's data and from federal nursing-home regulations, cites its sources, and declines anything medical.
 
-**Status:** release 1 (`v0.1.0`) is a read-only agent for staff and family. Release 2 is in progress: the backend with sign-in is done; the chat UI is next. Everything runs locally.
+**Status:** release 1 (`v0.1.0`) is a read-only agent for staff and family. Release 2 wraps it into an app: staff and family sign in and chat in the browser. Everything runs locally.
 
 ## Demo
 
@@ -71,17 +71,35 @@ Requires Python 3.11+, [uv](https://docs.astral.sh/uv/), and Docker.
    uv run python scripts/build_rules_index.py
    ```
 
-6. Start the backend, then open http://127.0.0.1:8000/docs to try the API. Sign in with `POST /auth/login`, then press **Authorize** and paste the token:
+6. Start the backend (keep it running):
 
    ```bash
    uv run uvicorn backend.main:app --env-file .env
    ```
 
-   For development, the graph also runs in LangGraph Studio, with the identity typed in by hand:
+7. In a second terminal, set up and start the chat UI. It has its own environment file, with only the backend's address and a session secret:
 
    ```bash
-   uv run langgraph dev
+   cp src/ui/.env.example src/ui/.env
    ```
+
+   ```bash
+   uv run chainlit create-secret
+   ```
+
+   Put the secret in `src/ui/.env` as `CHAINLIT_AUTH_SECRET`, then:
+
+   ```bash
+   cd src/ui && uv run chainlit run app.py --port 8001
+   ```
+
+   Open http://localhost:8001 and sign in with an email and password from `data/demo_accounts.csv`.
+
+The backend's API can also be tried directly at http://127.0.0.1:8000/docs. For development, the graph runs in LangGraph Studio with the identity typed in by hand:
+
+```bash
+uv run langgraph dev
+```
 
 ## Evaluation
 

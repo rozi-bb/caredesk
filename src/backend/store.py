@@ -44,6 +44,7 @@ class Thread:
 
     id: uuid.UUID
     created_at: datetime
+    title: str | None = None
 
 
 def _account(row: dict[str, Any] | None) -> Account | None:
@@ -70,7 +71,8 @@ async def create_thread(pool: Pool, account_id: int) -> Thread:
     """Create a new conversation owned by the account."""
     async with pool.connection() as conn:
         cur = await conn.execute(
-            "INSERT INTO threads (id, account_id) VALUES (%s, %s) RETURNING id, created_at",
+            "INSERT INTO threads (id, account_id) VALUES (%s, %s) "
+            "RETURNING id, created_at, title",
             (uuid.uuid4(), account_id),
         )
         row = await cur.fetchone()
@@ -82,7 +84,7 @@ async def list_threads(pool: Pool, account_id: int) -> list[Thread]:
     """Return the account's conversations, newest first."""
     async with pool.connection() as conn:
         cur = await conn.execute(
-            "SELECT id, created_at FROM threads WHERE account_id = %s "
+            "SELECT id, created_at, title FROM threads WHERE account_id = %s "
             "ORDER BY created_at DESC",
             (account_id,),
         )
@@ -97,6 +99,15 @@ async def owns_thread(pool: Pool, account_id: int, thread_id: uuid.UUID) -> bool
             (thread_id, account_id),
         )
         return await cur.fetchone() is not None
+
+
+async def title_thread(pool: Pool, thread_id: uuid.UUID, title: str) -> None:
+    """Give the thread a title, unless it already has one."""
+    async with pool.connection() as conn:
+        await conn.execute(
+            "UPDATE threads SET title = %s WHERE id = %s AND title IS NULL",
+            (title, thread_id),
+        )
 
 
 async def record_usage(

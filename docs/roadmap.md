@@ -37,7 +37,7 @@ Each feature is one loop of build (step 9) → evaluate (step 17). If the evalua
 | 9.3 | Rules search with citations | F3 | F-tags chosen, handbook written, index built; first groundedness baseline recorded | ✅ [note](iterations/9.3-rules-search-citations.md) |
 | 9.4 | Emergency triage and clinical decline | F4, F5 | Safety evaluation is 100% | ✅ [note](iterations/9.4-triage-and-guardrails.md) |
 
-Decisions made along the way: embeddings and vector store in 9.3 (ADR-0015), emergency keyword pre-check in 9.4 (ADR-0016). Still open: the evaluation judge, needed before the first LLM-as-judge run (architecture.md section 9).
+Decisions made along the way: embeddings and vector store in 9.3 (ADR-0015), emergency keyword pre-check in 9.4 (ADR-0016). Still open: the evaluation judge, needed before the first LLM-as-judge run (architecture.md, "Open decisions").
 
 ### Release
 
@@ -69,10 +69,12 @@ Package A note: [iterations/r2-a-backend.md](iterations/r2-a-backend.md).
 
 | # | Step | Status |
 |---|---|---|
-| 16 | Chat UI in the browser, Chainlit as the candidate | ⬜ |
-| 19 | Security tests: the API key never reaches the browser | ⬜ |
+| 16 | Chat UI in the browser with Chainlit, as a client of the backend ([ADR-0024](adr/0024-chainlit-ui-as-backend-client.md)) | ✅ |
+| 19 | Security tests: the API key never reaches the browser | ✅ |
 
-Open before step 19: rate limiting must not block an emergency message (prd.md section 10).
+Package B note: [iterations/r2-b-ui.md](iterations/r2-b-ui.md).
+
+Still open: rate limiting, which must never block an emergency message (prd.md section 10). Needed before the app is reachable by others, so it moves to package C.
 
 Not planned: packages and usage limits (step 14) and payments (step 15). CareDesk serves one home that pays per use, and a hard limit could block an emergency ([ADR-0009](adr/0009-no-hard-usage-limits.md)).
 

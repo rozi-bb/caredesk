@@ -29,3 +29,4 @@ Format: Status, Date, Context, Decision, Alternatives considered, Consequences. 
 | [0021](0021-one-postgres-database.md) | One Postgres database for all app data | Accepted |
 | [0022](0022-accounts-created-by-the-home.md) | Email and password accounts, created by the home | Accepted |
 | [0023](0023-signed-tokens-for-sign-in.md) | Signed tokens for sign-in | Accepted |
+| [0024](0024-chainlit-ui-as-backend-client.md) | The chat UI is a Chainlit app that only calls the backend | Accepted |

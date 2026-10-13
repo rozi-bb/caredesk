@@ -3,18 +3,19 @@
 | | |
 |---|---|
 | Status | Draft |
-| Release | 2, package A (backend) |
+| Release | 2 (backend and chat UI) |
 | Last updated | 2026-10-13 |
 
 How CareDesk is built. What it does is in [prd.md](prd.md); why each choice was made is in [adr/](adr/).
 
 ## 1. Overview
 
-Everything runs locally. Our own backend (FastAPI) signs users in and runs the graph ([ADR-0020](adr/0020-own-backend-not-agent-server.md)). One Postgres database in Docker holds all app data ([ADR-0021](adr/0021-one-postgres-database.md)). The chat UI arrives in package B; until then the API is called directly.
+Everything runs locally. Users chat in a Chainlit UI, which only calls our backend ([ADR-0024](adr/0024-chainlit-ui-as-backend-client.md)). The backend (FastAPI) signs users in and runs the graph ([ADR-0020](adr/0020-own-backend-not-agent-server.md)). One Postgres database in Docker holds all app data ([ADR-0021](adr/0021-one-postgres-database.md)).
 
 ```mermaid
 flowchart LR
-    C["Client<br/>(API now, UI in package B)"] -->|"Bearer token"| B["Backend<br/>FastAPI"]
+    U["Browser"] --> C["Chat UI<br/>Chainlit, port 8001"]
+    C -->|"Bearer token"| B["Backend<br/>FastAPI, port 8000"]
     B --> G["CareDesk graph"]
     G --> M["DeepSeek"]
     G --> V[("Rules index<br/>F-tags + handbook")]
@@ -116,7 +117,7 @@ Code: `src/backend/` (`main.py` routes, `store.py` queries, `security.py` passwo
 | `GET /health` | Server and database are up |
 | `POST /auth/login` | Email and password in, token out. Wrong email and wrong password get the same reply |
 | `GET /me` | Who is signed in |
-| `POST /threads`, `GET /threads` | Start a conversation; list your own |
+| `POST /threads`, `GET /threads` | Start a conversation; list your own, titled by their first question |
 | `GET /threads/{id}/messages` | History of one of your conversations |
 | `POST /threads/{id}/messages` | Ask a question; the answer streams back |
 
@@ -132,12 +133,25 @@ The graph is compiled with LangGraph's Postgres checkpointer, so conversations s
 
 Run it with `uv run uvicorn backend.main:app --env-file .env`.
 
-## 6. Data
+## 6. Chat UI
+
+Code: `src/ui/` (`app.py` Chainlit handlers, `client.py` backend client). Run from that folder: `cd src/ui && uv run chainlit run app.py --port 8001`.
+
+| Moment | What happens |
+|---|---|
+| Sign-in | Chainlit's password form; the backend checks it and returns a token, kept in the Chainlit session for 8 hours |
+| New chat | A greeting with emergency contacts, and buttons for up to five earlier conversations |
+| Message | A thread is created on the first message; the answer streams in as the backend sends it |
+| Earlier conversation | Its history is loaded from the backend and the chat continues in the same thread |
+
+The UI holds no model keys and has its own `.env` with only `BACKEND_URL` and `CHAINLIT_AUTH_SECRET`. It never imports the graph, a model, or the database.
+
+## 7. Data
 
 | Store | Holds | Written by |
 |---|---|---|
 | Postgres: records | Residents, family links, staff, schedules, activities, visits, incidents, billing | Seed script with a fixed seed; at runtime, only emergency incidents |
-| Postgres: app | Accounts, thread owners, usage events | Seed script (accounts); backend |
+| Postgres: app | Accounts, thread owners and titles, usage events | Seed script (accounts); backend |
 | Postgres: checkpoints | Messages per thread | LangGraph's checkpointer |
 | Rules index (`data/rules_index.json`) | 204 passages from 14 F-tags and the handbook, embedded locally | `scripts/build_rules_index.py` |
 
@@ -145,30 +159,30 @@ Run it with `uv run uvicorn backend.main:app --env-file .env`.
 - Postgres runs in Docker (`docker-compose.yml`). `DATABASE_URL` overrides the local default.
 - "Today" is fixed at 2026-10-05 (`REFERENCE_DATE` in `src/agent/db`), so answers and evaluations do not change from day to day.
 
-## 7. Models
+## 8. Models
 
 | Use | Model |
 |---|---|
 | Triage | `deepseek-flash` |
 | Answers | `deepseek-flash`; `deepseek-v4-pro` if evaluation shows it is needed |
 | Embeddings | `BAAI/bge-small-en-v1.5`, local through fastembed ([ADR-0015](adr/0015-local-embeddings-in-memory-index.md)) |
-| Evaluation judge | Not decided (section 10) |
+| Evaluation judge | Not decided (section 11) |
 
-## 8. Observability
+## 9. Observability
 
 Every run is traced in LangSmith (project `caredesk`) and tagged with `user_id` and `role`; runs from the backend also carry `account_id` and `thread_id`. Quality and cost can be split per user and role, and the same tokens are in `usage_events`.
 
-## 9. Evaluation
+## 10. Evaluation
 
 Evaluations run in LangSmith against the four categories in prd.md section 8, using code-based checks ([ADR-0014](adr/0014-code-based-evaluators.md)). Datasets are in `evals/suites.py`, versioned by name. Each run seeds a throwaway Postgres database and drops it afterwards; unit tests do the same.
 
 | Layer | Checks | Calls an API? |
 |---|---|---|
-| Unit tests | Permission filters, routing, sign-in, thread isolation, streaming (fake models) | No |
+| Unit tests | Permission filters, routing, sign-in, thread isolation, streaming, the UI's backend client (fake models) | No |
 | Integration tests | The whole graph with a real model | Yes |
 | Evaluations | Answers, citations, safety, access control | Yes |
 
-## 10. Open decisions
+## 11. Open decisions
 
 | Decision | Constraint | Needed by |
 |---|---|---|

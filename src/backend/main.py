@@ -71,10 +71,11 @@ class Profile(BaseModel):
 
 
 class ThreadOut(BaseModel):
-    """A conversation."""
+    """A conversation. The title is its first question, once there is one."""
 
     thread_id: uuid.UUID
     created_at: datetime
+    title: str | None = None
 
 
 class ChatRequest(BaseModel):
@@ -88,6 +89,17 @@ class MessageOut(BaseModel):
 
     role: str
     content: str
+
+
+TITLE_LENGTH = 60
+
+
+def _title(content: str) -> str:
+    """Shorten the first question into a one-line title."""
+    line = " ".join(content.split())
+    return (
+        line if len(line) <= TITLE_LENGTH else line[: TITLE_LENGTH - 1].rstrip() + "…"
+    )
 
 
 def _sse(event: str, data: dict[str, Any]) -> str:
@@ -201,13 +213,18 @@ def create_app(
     async def new_thread(request: Request, account: Signed) -> ThreadOut:
         """Start a new conversation."""
         thread = await store.create_thread(pool_of(request), account.id)
-        return ThreadOut(thread_id=thread.id, created_at=thread.created_at)
+        return ThreadOut(
+            thread_id=thread.id, created_at=thread.created_at, title=thread.title
+        )
 
     @app.get("/threads")
     async def threads(request: Request, account: Signed) -> list[ThreadOut]:
         """List the signed-in user's own conversations."""
         rows = await store.list_threads(pool_of(request), account.id)
-        return [ThreadOut(thread_id=t.id, created_at=t.created_at) for t in rows]
+        return [
+            ThreadOut(thread_id=t.id, created_at=t.created_at, title=t.title)
+            for t in rows
+        ]
 
     @app.get("/threads/{thread_id}/messages")
     async def history(
@@ -236,6 +253,7 @@ def create_app(
         because of it (ADR-0009).
         """
         await require_thread(request, account, thread_id)
+        await store.title_thread(pool_of(request), thread_id, _title(body.content))
         events = _answer(
             request.app.state.graph, pool_of(request), account, thread_id, body.content
         )

@@ -4,7 +4,6 @@ The models are fakes, so these tests make no API calls; the database is a
 throwaway Postgres database.
 """
 
-import itertools
 import json
 from collections.abc import Iterator
 from typing import Any
@@ -12,41 +11,12 @@ from typing import Any
 import psycopg
 import pytest
 from fastapi.testclient import TestClient
-from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
-from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
-from langchain_core.runnables import RunnableLambda
+from langchain_core.messages import AIMessage, ToolMessage
 
-from agent.graph import build_graph
-from agent.triage import CLINICAL_RESPONSE, TriageResult
-from backend.config import Settings
-from backend.main import create_app
+from agent.triage import CLINICAL_RESPONSE
 from backend.security import create_token
 
-SECRET = "s" * 40
-PETER = "peter.bennett@example.org"  # family, son of Harold Bennett
-ANNE = "anne.bennett@example.org"  # family, daughter of Harold Bennett
-KAREN_STAFF = "karen.mitchell@staff.example.org"
-ANSWER = "Harold has lunch at noon today."
-
-
-class FakeModel(GenericFakeChatModel):
-    """Answering model with scripted replies; accepts tools like a real one."""
-
-    def bind_tools(self, tools: Any, **kwargs: Any) -> "FakeModel":
-        return self
-
-
-def answering(*replies: AIMessage, streaming: bool = True) -> FakeModel:
-    script = replies or (AIMessage(ANSWER),)
-    return FakeModel(messages=itertools.cycle(script), disable_streaming=not streaming)
-
-
-def by_keyword(messages: list[BaseMessage]) -> TriageResult:
-    text = messages[-1].text.lower()
-    category = (
-        "emergency" if "fell" in text else "clinical" if "dose" in text else "normal"
-    )
-    return TriageResult(category=category, reason="test")  # type: ignore[arg-type]
+from .fakes import ANNE, ANSWER, PETER, SECRET, FakeModel, answering, app_with_fakes
 
 
 @pytest.fixture(scope="module")
@@ -60,11 +30,7 @@ def make_client(api_db: str, monkeypatch: pytest.MonkeyPatch) -> Iterator[Any]:
     clients: list[TestClient] = []
 
     def make(model: FakeModel | None = None) -> TestClient:
-        settings = Settings(database_url=api_db, auth_secret=SECRET, token_minutes=5)
-        graph_factory = lambda cp: build_graph(  # noqa: E731
-            model or answering(), RunnableLambda(by_keyword), cp
-        )
-        client = TestClient(create_app(graph_factory, settings))
+        client = TestClient(app_with_fakes(api_db, model))
         client.__enter__()
         clients.append(client)
         return client
@@ -166,6 +132,25 @@ def test_chat_streams_the_answer_and_records_usage(
     assert answer_text(events) == ANSWER
     assert events[-1] == ("done", {"route": "normal"})
     assert usage_rows(api_db, PETER) == before + 1
+
+
+def test_threads_are_titled_by_their_first_question(
+    client: TestClient, test_password: str
+) -> None:
+    headers = sign_in(client, PETER, test_password)
+    thread = new_thread(client, headers)
+    long_question = (
+        "What is Harold doing today, and is there anything planned for the afternoon?"
+    )
+    chat(client, headers, thread, long_question)
+    chat(client, headers, thread, "And tomorrow?")
+    listed = {
+        t["thread_id"]: t["title"]
+        for t in client.get("/threads", headers=headers).json()
+    }
+    title = listed[thread]
+    assert title.startswith("What is Harold doing today") and title.endswith("…")
+    assert len(title) == 60
 
 
 def test_fixed_replies_are_streamed_too(client: TestClient, test_password: str) -> None:

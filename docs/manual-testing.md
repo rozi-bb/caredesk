@@ -10,9 +10,13 @@ Questions to try every feature by hand, in LangGraph Studio or through the API. 
 
 "Today" in the data is Monday, 5 October 2026. Without an identity (`user_id 0`, `role unknown`), the assistant shows no records.
 
+### In the chat UI
+
+Start the backend and the UI (README, steps 6 and 7) and open http://localhost:8001. Sign in with an account from `data/demo_accounts.csv`; the identities below become accounts, for example Peter Bennett is `peter.bennett@example.org` and staff Karen Mitchell is `karen.mitchell@staff.example.org`. Start a **New chat** (top left) when you switch accounts or topics; earlier conversations appear as buttons on each new chat.
+
 ### Through the API instead
 
-Start the backend (`uv run uvicorn backend.main:app --env-file .env`) and open http://127.0.0.1:8000/docs. Sign in with `POST /auth/login` using an email and password from `data/demo_accounts.csv`, press **Authorize** and paste the token, create a thread with `POST /threads`, and ask with `POST /threads/{thread_id}/messages`. The identity comes from the account, so the identities below become accounts: for example Peter Bennett is `peter.bennett@example.org`, and staff Karen Mitchell is `karen.mitchell@staff.example.org`.
+Start the backend (`uv run uvicorn backend.main:app --env-file .env`) and open http://127.0.0.1:8000/docs. Sign in with `POST /auth/login` using an email and password from `data/demo_accounts.csv`, press **Authorize** and paste the token, create a thread with `POST /threads`, and ask with `POST /threads/{thread_id}/messages`. The identity comes from the account, as in the UI.
 
 Also worth trying: open another user's thread (expect 404), and call any endpoint without a token (expect 401).
 

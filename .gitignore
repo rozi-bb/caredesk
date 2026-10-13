@@ -164,3 +164,7 @@ cython_debug/
 
 # Generated data (rebuild with scripts/seed_db.py)
 /data/
+
+# Chainlit (src/ui): uploads and generated translations
+/src/ui/.files/
+/src/ui/.chainlit/translations/
