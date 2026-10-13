@@ -55,6 +55,7 @@ uv run python -m evals.run
 | [Product requirements](docs/prd.md) | What CareDesk does, for whom, and its rules |
 | [Architecture](docs/architecture.md) | How it is built |
 | [Roadmap](docs/roadmap.md) | Order of work |
+| [Manual testing](docs/manual-testing.md) | Questions to try each feature in Studio |
 | [Decision records](docs/adr/) | Why each decision was made |
 
 ## Data
