@@ -13,6 +13,13 @@ from agent.db import DEFAULT_DATABASE_URL, url_with_database
 ROOT = Path(__file__).resolve().parents[1]
 TEST_PASSWORD = "test-password-123"
 
+# Importing Chainlit creates its config and upload folders in its app root and
+# loads .env from the working directory. Point both at the UI's own folder, so
+# tests use the real UI config, never the backend's keys, and leave the
+# project root clean.
+os.environ.setdefault("CHAINLIT_APP_ROOT", str(ROOT / "src" / "ui"))
+os.environ.setdefault("CHAINLIT_ENV_FILE", str(ROOT / "src" / "ui" / ".env.example"))
+
 
 @pytest.fixture(scope="session")
 def anyio_backend():

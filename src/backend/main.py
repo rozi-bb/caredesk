@@ -78,6 +78,12 @@ class ThreadOut(BaseModel):
     title: str | None = None
 
 
+class NewThreadRequest(BaseModel):
+    """Optionally, the id the client wants for the new conversation."""
+
+    thread_id: uuid.UUID | None = None
+
+
 class ChatRequest(BaseModel):
     """One message from the user."""
 
@@ -170,6 +176,7 @@ def create_app(
             await checkpointer.setup()
             app.state.settings = cfg
             app.state.pool = pool
+            app.state.checkpointer = checkpointer
             app.state.graph = (graph_factory or _default_graph)(checkpointer)
             yield
 
@@ -210,9 +217,17 @@ def create_app(
         return Profile(email=account.email, role=account.role, name=account.full_name)
 
     @app.post("/threads", status_code=status.HTTP_201_CREATED)
-    async def new_thread(request: Request, account: Signed) -> ThreadOut:
-        """Start a new conversation."""
-        thread = await store.create_thread(pool_of(request), account.id)
+    async def new_thread(
+        request: Request, account: Signed, body: NewThreadRequest | None = None
+    ) -> ThreadOut:
+        """Start a new conversation, optionally with an id chosen by the client."""
+        thread = await store.create_thread(
+            pool_of(request), account.id, body.thread_id if body else None
+        )
+        if thread is None:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT, "Conversation id already in use."
+            )
         return ThreadOut(
             thread_id=thread.id, created_at=thread.created_at, title=thread.title
         )
@@ -225,6 +240,14 @@ def create_app(
             ThreadOut(thread_id=t.id, created_at=t.created_at, title=t.title)
             for t in rows
         ]
+
+    @app.delete("/threads/{thread_id}", status_code=status.HTTP_204_NO_CONTENT)
+    async def delete(request: Request, account: Signed, thread_id: uuid.UUID) -> None:
+        """Delete one of the user's conversations, including its messages."""
+        await require_thread(request, account, thread_id)
+        checkpointer: AsyncPostgresSaver = request.app.state.checkpointer
+        await checkpointer.adelete_thread(str(thread_id))
+        await store.delete_thread(pool_of(request), account.id, thread_id)
 
     @app.get("/threads/{thread_id}/messages")
     async def history(

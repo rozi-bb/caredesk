@@ -25,6 +25,10 @@ class ConversationNotFound(Exception):
     """The conversation does not exist or belongs to someone else."""
 
 
+class ThreadIdTaken(Exception):
+    """The chosen conversation id is already in use."""
+
+
 @dataclass(frozen=True)
 class Profile:
     """The signed-in user."""
@@ -99,13 +103,27 @@ class BackendClient:
             for t in response.json()
         ]
 
-    async def new_thread(self, token: str) -> str:
-        """Start a conversation and return its id."""
+    async def new_thread(self, token: str, thread_id: str | None = None) -> str:
+        """Start a conversation, optionally with a chosen id, and return its id."""
         async with self._http() as http:
-            response = await http.post("/threads", headers=self._auth(token))
+            response = await http.post(
+                "/threads",
+                headers=self._auth(token),
+                json={"thread_id": thread_id} if thread_id else None,
+            )
+        if response.status_code == 409:
+            raise ThreadIdTaken
         self._check(response)
-        thread_id: str = response.json()["thread_id"]
-        return thread_id
+        created: str = response.json()["thread_id"]
+        return created
+
+    async def delete_thread(self, token: str, thread_id: str) -> None:
+        """Delete one of the user's conversations."""
+        async with self._http() as http:
+            response = await http.delete(
+                f"/threads/{thread_id}", headers=self._auth(token)
+            )
+        self._check(response)
 
     async def history(self, token: str, thread_id: str) -> list[tuple[str, str]]:
         """Return (role, content) pairs of one conversation."""

@@ -9,8 +9,11 @@ from pathlib import Path
 
 import httpx
 import pytest
+from chainlit.types import Pagination, ThreadFilter
+from chainlit.user import User
 
 from ui.client import BackendClient, ConversationNotFound, SignInRequired
+from ui.data_layer import BackendDataLayer
 
 from .fakes import ANNE, ANSWER, PETER, app_with_fakes
 
@@ -79,6 +82,93 @@ async def test_someone_elses_thread_is_not_found(
         await backend.history(anne, thread)
     with pytest.raises(ConversationNotFound):
         [e async for e in backend.ask(anne, thread, "hi")]
+
+
+# ---------- sidebar history: each user sees only their own (ADR-0025) ----------
+
+
+async def _signed_in(
+    layer: BackendDataLayer, backend: BackendClient, email: str, password: str
+) -> str:
+    token = await backend.login(email, password)
+    assert token
+    await layer.create_user(User(identifier=email, metadata={"token": token}))
+    return token
+
+
+async def _sidebar(layer: BackendDataLayer, email: str) -> list[str]:
+    page = await layer.list_threads(Pagination(first=20), ThreadFilter(userId=email))
+    return [t["id"] for t in page.data]
+
+
+async def test_sidebar_shows_only_the_signed_in_users_threads(
+    backend: BackendClient, test_password: str
+) -> None:
+    layer = BackendDataLayer(backend)
+    peter = await _signed_in(layer, backend, PETER, test_password)
+    anne = await _signed_in(layer, backend, ANNE, test_password)
+    peters = await backend.new_thread(peter)
+    [e async for e in backend.ask(peter, peters, "What is Harold doing?")]
+    annes = await backend.new_thread(anne)
+    [e async for e in backend.ask(anne, annes, "Can I visit tonight?")]
+
+    assert await _sidebar(layer, PETER) == [peters]
+    assert await _sidebar(layer, ANNE) == [annes]
+    assert await _sidebar(layer, "nobody@example.org") == []
+
+
+async def test_a_thread_belongs_only_to_its_owner(
+    backend: BackendClient, test_password: str
+) -> None:
+    layer = BackendDataLayer(backend)
+    peter = await _signed_in(layer, backend, PETER, test_password)
+    await _signed_in(layer, backend, ANNE, test_password)
+    thread = await backend.new_thread(peter)
+    [e async for e in backend.ask(peter, thread, "What is Harold doing?")]
+
+    # Unknown until the backend has confirmed the owner: Chainlit then answers 404.
+    assert await layer.get_thread_author(thread) == ""
+    assert await layer.get_thread(thread) is None
+
+    await _sidebar(layer, PETER)
+    # Chainlit compares this with the signed-in user, so Anne is refused.
+    assert await layer.get_thread_author(thread) == PETER
+    loaded = await layer.get_thread(thread)
+    assert loaded is not None
+    assert loaded["userIdentifier"] == PETER
+    assert [(s["type"], s["output"]) for s in loaded["steps"]] == [
+        ("user_message", "What is Harold doing?"),
+        ("assistant_message", ANSWER),
+    ]
+
+
+async def test_deleting_from_the_sidebar_deletes_in_the_backend(
+    backend: BackendClient, test_password: str
+) -> None:
+    layer = BackendDataLayer(backend)
+    peter = await _signed_in(layer, backend, PETER, test_password)
+    thread = await backend.new_thread(peter)
+    [e async for e in backend.ask(peter, thread, "What is Harold doing?")]
+    await _sidebar(layer, PETER)
+
+    await layer.delete_thread(thread)
+    assert await _sidebar(layer, PETER) == []
+    with pytest.raises(ConversationNotFound):
+        await backend.history(peter, thread)
+
+
+async def test_the_backend_token_is_not_handed_back_to_chainlit(
+    backend: BackendClient, test_password: str
+) -> None:
+    layer = BackendDataLayer(backend)
+    token = await backend.login(PETER, test_password)
+    persisted = await layer.create_user(
+        User(identifier=PETER, metadata={"token": token, "role": "family"})
+    )
+    assert persisted is not None
+    assert "token" not in persisted.metadata  # Chainlit returns this user to the page
+    assert layer.token_for(PETER) == token
+    assert await layer.get_user(PETER) is None
 
 
 # ---------- the UI never holds model keys (step 19) ----------

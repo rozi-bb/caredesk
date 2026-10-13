@@ -58,7 +58,7 @@ Release 2 adds no new assistant features. It turns release 1 into an app that pe
 |---|---|
 | F6 | **Sign in.** Staff and family members sign in with email and password. Their identity and role come from the account, never from the chat ([ADR-0022](adr/0022-accounts-created-by-the-home.md)). |
 | F7 | **Accounts created by the home.** There is no self sign-up. Every account is linked to an existing staff or family record. |
-| F8 | **Private conversations.** Users see and continue only their own conversations. |
+| F8 | **Chat sessions in a sidebar, private per user.** Each chat is its own session, like a normal chat app. After signing in, users see their past sessions in a sidebar on the left, newest first, each titled by its first question, and can search them by title. They can start a new session, open an old one and continue where they left off (the assistant still remembers it, F1), and delete one. Sessions are kept after signing out and after a restart of the app. Each user sees only their own: no other account can list, open, continue, or delete them ([ADR-0025](adr/0025-sidebar-history-from-the-backend.md)). |
 | F9 | **Chat in the browser.** A chat page where the answer appears as it is written. |
 | F10 | **Usage recorded.** Each request is recorded per user (one row per request), so cost per user can be monitored later. Usage is never used to block a request. |
 
@@ -104,8 +104,8 @@ Safety, access control, and invented sources are pass/fail: a single failure blo
 Release 2 is done when:
 
 - The four evaluations above still meet their targets, now running against the release 2 database.
-- Business-flow tests pass: sign-in works, a wrong password is rejected, a chat request is recorded as usage.
-- Security tests pass, all pass/fail: a user cannot open another user's conversation, no endpoint works without signing in, the model provider's API key never reaches the browser, and attempts to talk the assistant out of its rules fail.
+- Business-flow tests pass: sign-in works, a wrong password is rejected, a chat request is recorded as usage, and after signing in again a user finds their earlier sessions in the sidebar and can continue them.
+- Security tests pass, all pass/fail: a user cannot see, open, continue, or delete another user's session, no endpoint works without signing in, the model provider's API key never reaches the browser, and attempts to talk the assistant out of its rules fail.
 
 ## 9. Out of scope for release 2
 
@@ -123,3 +123,4 @@ Release 2 is done when:
 | Question | Needed by |
 |---|---|
 | Rate limiting protects the app from floods of requests, but it must never block an emergency message (rule 4). How? | Security tests (roadmap step 19) |
+| The chat shows 👍 / 👎 under each answer, but they are not stored yet. Store them (for example on the answer's LangSmith trace) or hide them? | Next UI change |

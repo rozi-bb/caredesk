@@ -71,8 +71,9 @@ Package A note: [iterations/r2-a-backend.md](iterations/r2-a-backend.md).
 |---|---|---|
 | 16 | Chat UI in the browser with Chainlit, as a client of the backend ([ADR-0024](adr/0024-chainlit-ui-as-backend-client.md)) | ✅ |
 | 19 | Security tests: the API key never reaches the browser | ✅ |
+| 16 | Follow-up: past conversations in the sidebar, private to each user ([ADR-0025](adr/0025-sidebar-history-from-the-backend.md)) | ✅ |
 
-Package B note: [iterations/r2-b-ui.md](iterations/r2-b-ui.md).
+Package B notes: [iterations/r2-b-ui.md](iterations/r2-b-ui.md), [iterations/r2-b-sidebar.md](iterations/r2-b-sidebar.md).
 
 Still open: rate limiting, which must never block an emergency message (prd.md section 10). Needed before the app is reachable by others, so it moves to package C.
 

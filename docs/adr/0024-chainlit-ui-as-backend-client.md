@@ -1,6 +1,6 @@
 # ADR-0024: The chat UI is a Chainlit app that only calls the backend
 
-- Status: Accepted
+- Status: Accepted; history part superseded by [ADR-0025](0025-sidebar-history-from-the-backend.md)
 - Date: 2026-10-13
 
 ## Context

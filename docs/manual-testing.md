@@ -12,7 +12,9 @@ Questions to try every feature by hand, in LangGraph Studio or through the API. 
 
 ### In the chat UI
 
-Start the backend and the UI (README, steps 6 and 7) and open http://localhost:8001. Sign in with an account from `data/demo_accounts.csv`; the identities below become accounts, for example Peter Bennett is `peter.bennett@example.org` and staff Karen Mitchell is `karen.mitchell@staff.example.org`. Start a **New chat** (top left) when you switch accounts or topics; earlier conversations appear as buttons on each new chat.
+Start the backend and the UI (README, steps 6 and 7) and open http://localhost:8001. Sign in with an account from `data/demo_accounts.csv`; the identities below become accounts, for example Peter Bennett is `peter.bennett@example.org` and staff Karen Mitchell is `karen.mitchell@staff.example.org`. Past conversations are in the sidebar on the left: open one to continue it, or use its **⋯** menu to delete it. Start a **New chat** (top left) for a new topic.
+
+Privacy check: sign in as Peter and ask something, then log out and sign in as Anne. Anne's sidebar must not show Peter's conversation, and opening Peter's conversation link (`/thread/<id>`) must fail.
 
 ### Through the API instead
 

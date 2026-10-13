@@ -117,7 +117,8 @@ Code: `src/backend/` (`main.py` routes, `store.py` queries, `security.py` passwo
 | `GET /health` | Server and database are up |
 | `POST /auth/login` | Email and password in, token out. Wrong email and wrong password get the same reply |
 | `GET /me` | Who is signed in |
-| `POST /threads`, `GET /threads` | Start a conversation; list your own, titled by their first question |
+| `POST /threads`, `GET /threads` | Start a conversation (optionally with an unused id the client chooses); list your own, titled by their first question |
+| `DELETE /threads/{id}` | Delete one of your conversations and its messages; usage rows are kept |
 | `GET /threads/{id}/messages` | History of one of your conversations |
 | `POST /threads/{id}/messages` | Ask a question; the answer streams back |
 
@@ -135,14 +136,18 @@ Run it with `uv run uvicorn backend.main:app --env-file .env`.
 
 ## 6. Chat UI
 
-Code: `src/ui/` (`app.py` Chainlit handlers, `client.py` backend client). Run from that folder: `cd src/ui && uv run chainlit run app.py --port 8001`.
+Code: `src/ui/` (`app.py` Chainlit handlers, `client.py` backend client, `data_layer.py` sidebar history). Run from that folder: `cd src/ui && uv run chainlit run app.py --port 8001`.
 
 | Moment | What happens |
 |---|---|
 | Sign-in | Chainlit's password form; the backend checks it and returns a token, kept in the Chainlit session for 8 hours |
-| New chat | A greeting with emergency contacts, and buttons for up to five earlier conversations |
-| Message | A thread is created on the first message; the answer streams in as the backend sends it |
-| Earlier conversation | Its history is loaded from the backend and the chat continues in the same thread |
+| Sidebar | The signed-in user's past conversations, listed by the backend with that user's token |
+| New chat | A greeting with emergency contacts |
+| Message | The backend thread is created on the first message, with Chainlit's thread id; the answer streams in |
+| Open a past conversation | Its messages are loaded from the backend and the chat continues in the same thread |
+| Delete | Through the backend, which checks ownership |
+
+The sidebar comes from a Chainlit data layer that stores nothing ([ADR-0025](adr/0025-sidebar-history-from-the-backend.md)). A thread's owner is known only once the backend has returned it with the owner's token; an unknown thread counts as not found, so Chainlit refuses to open it. The backend checks ownership again on every call.
 
 The UI holds no model keys and has its own `.env` with only `BACKEND_URL` and `CHAINLIT_AUTH_SECRET`. It never imports the graph, a model, or the database.
 

@@ -1,6 +1,6 @@
 [project]
 name = "caredesk"
-version = "0.2.0"
+version = "0.2.1"
 description = "Administrative assistant for a fictional nursing home, built with LangGraph."
 authors = [
     { name = "Rozi" },
@@ -82,7 +82,11 @@ dev = [
     "ruff>=0.8.2",
 ]
 
-# Chainlit's API is untyped; only the module that calls it may call untyped functions.
+# Chainlit's API is untyped; only the modules that call it may call untyped functions.
 [[tool.mypy.overrides]]
-module = "ui.app"
+module = ["ui.app", "ui.data_layer"]
 disallow_untyped_calls = false
+
+[tool.pytest.ini_options]
+# A deprecation inside traceloop, which Chainlit imports; not our code.
+filterwarnings = ["ignore::DeprecationWarning:traceloop.*"]

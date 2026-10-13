@@ -67,17 +67,23 @@ async def get_account(pool: Pool, account_id: int) -> Account | None:
         return _account(await cur.fetchone())
 
 
-async def create_thread(pool: Pool, account_id: int) -> Thread:
-    """Create a new conversation owned by the account."""
+async def create_thread(
+    pool: Pool, account_id: int, thread_id: uuid.UUID | None = None
+) -> Thread | None:
+    """Create a new conversation owned by the account.
+
+    The client may choose the id (the chat UI uses its own). Returns None if
+    that id is already taken, by anyone: an existing thread is never handed
+    to another account.
+    """
     async with pool.connection() as conn:
         cur = await conn.execute(
             "INSERT INTO threads (id, account_id) VALUES (%s, %s) "
-            "RETURNING id, created_at, title",
-            (uuid.uuid4(), account_id),
+            "ON CONFLICT (id) DO NOTHING RETURNING id, created_at, title",
+            (thread_id or uuid.uuid4(), account_id),
         )
         row = await cur.fetchone()
-        assert row is not None
-        return Thread(**row)
+        return Thread(**row) if row else None
 
 
 async def list_threads(pool: Pool, account_id: int) -> list[Thread]:
@@ -99,6 +105,15 @@ async def owns_thread(pool: Pool, account_id: int, thread_id: uuid.UUID) -> bool
             (thread_id, account_id),
         )
         return await cur.fetchone() is not None
+
+
+async def delete_thread(pool: Pool, account_id: int, thread_id: uuid.UUID) -> None:
+    """Delete one of the account's conversations; its usage rows are kept."""
+    async with pool.connection() as conn:
+        await conn.execute(
+            "DELETE FROM threads WHERE id = %s AND account_id = %s",
+            (thread_id, account_id),
+        )
 
 
 async def title_thread(pool: Pool, thread_id: uuid.UUID, title: str) -> None:

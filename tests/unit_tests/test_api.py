@@ -5,6 +5,7 @@ throwaway Postgres database.
 """
 
 import json
+import uuid
 from collections.abc import Iterator
 from typing import Any
 
@@ -206,6 +207,7 @@ def test_conversation_survives_an_app_restart(
         ("POST", "/threads"),
         ("GET", "/threads/00000000-0000-0000-0000-000000000000/messages"),
         ("POST", "/threads/00000000-0000-0000-0000-000000000000/messages"),
+        ("DELETE", "/threads/00000000-0000-0000-0000-000000000000"),
     ],
 )
 def test_every_endpoint_needs_a_valid_sign_in(
@@ -281,3 +283,42 @@ def test_messages_are_length_limited(client: TestClient, test_password: str) -> 
             f"/threads/{thread}/messages", headers=headers, json={"content": content}
         )
         assert response.status_code == 422
+
+
+def test_a_chosen_thread_id_can_never_take_over_an_existing_thread(
+    client: TestClient, test_password: str
+) -> None:
+    peter = sign_in(client, PETER, test_password)
+    anne = sign_in(client, ANNE, test_password)
+    thread = new_thread(client, peter)
+    chat(client, peter, thread, "What is Harold doing today?")
+
+    taken = client.post("/threads", headers=anne, json={"thread_id": thread})
+    assert taken.status_code == 409
+    assert client.get(f"/threads/{thread}/messages", headers=anne).status_code == 404
+    assert len(client.get(f"/threads/{thread}/messages", headers=peter).json()) == 2
+
+    fresh = str(uuid.uuid4())
+    created = client.post("/threads", headers=anne, json={"thread_id": fresh})
+    assert created.status_code == 201
+    assert created.json()["thread_id"] == fresh
+
+
+def test_users_can_delete_only_their_own_threads(
+    client: TestClient, test_password: str, api_db: str
+) -> None:
+    peter = sign_in(client, PETER, test_password)
+    anne = sign_in(client, ANNE, test_password)
+    thread = new_thread(client, peter)
+    chat(client, peter, thread, "What is Harold doing today?")
+    usage_before = usage_rows(api_db, PETER)
+
+    assert client.delete(f"/threads/{thread}", headers=anne).status_code == 404
+    assert len(client.get(f"/threads/{thread}/messages", headers=peter).json()) == 2
+
+    assert client.delete(f"/threads/{thread}", headers=peter).status_code == 204
+    assert thread not in {
+        t["thread_id"] for t in client.get("/threads", headers=peter).json()
+    }
+    assert client.get(f"/threads/{thread}/messages", headers=peter).status_code == 404
+    assert usage_rows(api_db, PETER) == usage_before  # cost history is kept
