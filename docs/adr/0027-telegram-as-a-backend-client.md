@@ -19,6 +19,7 @@ Staff and family should be able to chat with CareDesk from Telegram as well as f
 - **Unlinking** from Chainlit ("Disconnect Telegram") or from the bot (`/disconnect`) takes effect on the next message.
 - **Answers are sent whole**, with Telegram's "typing…" indicator while the agent works, and split if longer than Telegram allows in one message.
 - **Usage records the channel** (web or Telegram), so monitoring can compare them.
+- **Fixed texts come from the backend.** The greeting and the emergency contacts are served by the backend, so Chainlit and the bot never hold copies that could drift apart.
 - **No admin settings page.** Bot settings live in `.env`: one home with one bot does not need one.
 
 ## Alternatives considered

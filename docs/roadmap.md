@@ -95,11 +95,15 @@ Staff and family can also chat with CareDesk from Telegram. Telegram is one more
 
 | # | Step | Status |
 |---|---|---|
-| T1 | Create the bot with @BotFather; its token lives only in `.env` | ⬜ |
-| T2 | Backend: link a Telegram account to a CareDesk account with a one-time code (valid 10 minutes, used once); unlink | ⬜ |
-| T3 | Chainlit: a "Connect Telegram" button on the greeting and a `/telegram` command, showing the bot link with the code and a QR code; once linked, the status and a "Disconnect Telegram" button | ⬜ |
-| T4 | Bot adapter: passes messages to the backend as the linked account; `/new` starts a new session; unlinked users are asked to connect first | ⬜ |
-| T5 | Security tests: an unlinked Telegram user gets no data, a used or expired code is refused, a linked user sees only their own data | ⬜ |
+| T1 | Create the bot with @BotFather; the bot token and the bot's backend key live only in `.env` | ⬜ |
+| T2 | Backend: links and one-time codes tables, connect and disconnect endpoints, chat endpoint for the bot, channel in usage | ⬜ |
+| T3 | Chainlit: Connect Telegram, the connected account's status, Disconnect | ⬜ |
+| T4 | Bot adapter: passes messages on, `/new`, `/disconnect`, private chats only, connect instructions and emergency contacts for unlinked users | ⬜ |
+| T5 | Fixed texts (greeting, emergency contacts) served by the backend, so Chainlit and the bot keep no copies of their own | ⬜ |
+| 18 | Business-flow tests for Telegram (prd.md section 8) | ⬜ |
+| 19 | Security tests for Telegram (prd.md section 8) | ⬜ |
+| 17 | Run the four evaluations again to catch regressions | ⬜ |
+| — | Try it in real Telegram; update the README and `manual-testing.md`; write the iteration note | ⬜ |
 
 Bot settings stay in `.env`; there is no admin settings page, because one home with one bot does not need one.
 
