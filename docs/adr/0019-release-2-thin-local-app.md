@@ -1,6 +1,6 @@
 # ADR-0019: Release 2 is a thin app that runs locally
 
-- Status: Accepted
+- Status: Accepted; package C replaced by [ADR-0026](0026-no-deployment.md)
 - Date: 2026-10-13
 
 ## Context

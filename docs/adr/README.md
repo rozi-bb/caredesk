@@ -24,10 +24,11 @@ Format: Status, Date, Context, Decision, Alternatives considered, Consequences. 
 | [0016](0016-emergency-keyword-precheck.md) | A narrow keyword check before the triage model | Accepted |
 | [0017](0017-emergency-records-never-block.md) | Emergency records never block the emergency response | Accepted |
 | [0018](0018-release-targets.md) | Release targets for correctness and groundedness | Accepted |
-| [0019](0019-release-2-thin-local-app.md) | Release 2 is a thin app that runs locally | Accepted |
+| [0019](0019-release-2-thin-local-app.md) | Release 2 is a thin app that runs locally | Accepted; package C replaced by 0026 |
 | [0020](0020-own-backend-not-agent-server.md) | Our own backend runs the graph, not the Agent Server | Accepted |
 | [0021](0021-one-postgres-database.md) | One Postgres database for all app data | Accepted |
 | [0022](0022-accounts-created-by-the-home.md) | Email and password accounts, created by the home | Accepted |
 | [0023](0023-signed-tokens-for-sign-in.md) | Signed tokens for sign-in | Accepted |
 | [0024](0024-chainlit-ui-as-backend-client.md) | The chat UI is a Chainlit app that only calls the backend | Accepted; history part superseded by 0025 |
 | [0025](0025-sidebar-history-from-the-backend.md) | Sidebar history read from the backend | Accepted |
+| [0026](0026-no-deployment.md) | CareDesk runs locally only; no deployment | Accepted |

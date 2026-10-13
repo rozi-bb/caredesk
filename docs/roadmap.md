@@ -75,28 +75,39 @@ Package A note: [iterations/r2-a-backend.md](iterations/r2-a-backend.md).
 
 Package B notes: [iterations/r2-b-ui.md](iterations/r2-b-ui.md), [iterations/r2-b-sidebar.md](iterations/r2-b-sidebar.md).
 
-Still open: rate limiting, which must never block an emergency message (prd.md section 10). Needed before the app is reachable by others, so it moves to package C.
-
 Not planned: packages and usage limits (step 14) and payments (step 15). CareDesk serves one home that pays per use, and a hard limit could block an emergency ([ADR-0009](adr/0009-no-hard-usage-limits.md)).
 
-## Package C — deploy and monitor
+## Package C — monitor, locally
 
-After release 2, when the app needs to be online.
+CareDesk is a portfolio project and is never deployed ([ADR-0026](adr/0026-no-deployment.md)). Monitoring is still built, on the app running locally.
 
-| # | Step |
-|---|---|
-| 20 | VPS, domain, HTTPS; Docker Compose behind Nginx |
-| 21 | Separate production keys and environment |
-| 22 | Scheduled database backups, with a tested restore |
-| 23 | Release procedure: tag, backup, deploy, migrate, smoke check, rollback plan |
-| 24 | Quality monitoring: traces, Insights, user feedback |
-| 25 | Cost per user from trace metadata and usage records |
-| 26 | Error and uptime monitoring; spending alert at the model provider |
+| # | Step | Status |
+|---|---|---|
+| 24 | Quality monitoring: traces, Insights, user feedback | ⬜ |
+| 25 | Cost per user from trace metadata and usage records | ⬜ |
+| 26 | Error monitoring; spending alert at the model provider | ⬜ |
+
+Not planned, because nothing is deployed: server, domain, and HTTPS (step 20), production keys (21), scheduled backups (22), the deploy procedure (23), uptime monitoring (26), and rate limiting, since only the owner can reach the app.
+
+## Telegram channel
+
+Staff and family can also chat with CareDesk from Telegram. Telegram is one more client of the backend, like the Chainlit UI; the agent does not change. The bot fetches messages itself (polling), so it runs locally without a public address. The PRD requirement and ADR are written before building.
+
+| # | Step | Status |
+|---|---|---|
+| T1 | Create the bot with @BotFather; its token lives only in `.env` | ⬜ |
+| T2 | Backend: link a Telegram account to a CareDesk account with a one-time code (valid 10 minutes, used once); unlink | ⬜ |
+| T3 | Chainlit: a "Connect Telegram" button on the greeting and a `/telegram` command, showing the bot link with the code and a QR code; once linked, the status and a "Disconnect Telegram" button | ⬜ |
+| T4 | Bot adapter: passes messages to the backend as the linked account; `/new` starts a new session; unlinked users are asked to connect first | ⬜ |
+| T5 | Security tests: an unlinked Telegram user gets no data, a used or expired code is refused, a linked user sees only their own data | ⬜ |
+
+Bot settings stay in `.env`; there is no admin settings page, because one home with one bot does not need one.
 
 ## Later
 
-Not ordered yet. The order is decided after release 2, based on what monitoring and users show.
+Not ordered yet. The order is decided after release 2, based on what monitoring shows.
 
+- WhatsApp channel, after Telegram. It needs a Meta Business account and a public address for its webhook
 - Resident access
 - Write actions with human confirmation, and data entry forms
 - LLM-as-judge and human review in evaluation (step 17); the judge must come from another provider ([ADR-0010](adr/0010-judge-from-a-different-provider.md))

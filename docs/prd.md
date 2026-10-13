@@ -113,7 +113,7 @@ Release 2 is done when:
 - Write actions such as booking a visit, and human confirmation for them
 - Data entry forms
 - Self sign-up and password reset by email
-- Running on the internet: release 2 runs locally ([ADR-0019](adr/0019-release-2-thin-local-app.md))
+- Running on the internet: CareDesk runs locally only and is never deployed ([ADR-0026](adr/0026-no-deployment.md))
 - Notifications outside the app (email, messaging)
 - Usage limits and payments. The home pays per use; there is never a hard limit, because a limit could block an emergency message ([ADR-0009](adr/0009-no-hard-usage-limits.md))
 - More than one nursing home
@@ -122,5 +122,4 @@ Release 2 is done when:
 
 | Question | Needed by |
 |---|---|
-| Rate limiting protects the app from floods of requests, but it must never block an emergency message (rule 4). How? | Security tests (roadmap step 19) |
 | The chat shows 👍 / 👎 under each answer, but they are not stored yet. Store them (for example on the answer's LangSmith trace) or hide them? | Next UI change |
