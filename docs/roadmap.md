@@ -56,12 +56,14 @@ Playbook stage 2, without deployment: the release 1 agent behind our own backend
 
 | # | Step | Status |
 |---|---|---|
-| 10 | Backend skeleton: FastAPI with a health check, calls the agent, reads config and secrets from the environment ([ADR-0020](adr/0020-own-backend-not-agent-server.md)) | ⬜ |
-| 11 | Postgres in Docker: operational data moved from SQLite, accounts, usage, conversation memory; schema changes as migration files ([ADR-0021](adr/0021-one-postgres-database.md)) | ⬜ |
-| 12 | Sign-in with accounts created by the home; users open only their own threads ([ADR-0022](adr/0022-accounts-created-by-the-home.md)) | ⬜ |
-| 13 | Chat endpoint: check sign-in, call the agent, record usage, stream the answer | ⬜ |
-| 18 | Business-flow tests: sign-in, wrong password, usage recorded | ⬜ |
-| 19 | Security tests: thread isolation, no endpoint without sign-in, prompt injection | ⬜ |
+| 10 | Backend skeleton: FastAPI with a health check, calls the agent, reads config and secrets from the environment ([ADR-0020](adr/0020-own-backend-not-agent-server.md)) | ✅ |
+| 11 | Postgres in Docker: operational data moved from SQLite, accounts, usage, conversation memory; schema changes as migration files ([ADR-0021](adr/0021-one-postgres-database.md)) | ✅ |
+| 12 | Sign-in with accounts created by the home; users open only their own threads ([ADR-0022](adr/0022-accounts-created-by-the-home.md)) | ✅ |
+| 13 | Chat endpoint: check sign-in, call the agent, record usage, stream the answer | ✅ |
+| 18 | Business-flow tests: sign-in, wrong password, usage recorded | ✅ |
+| 19 | Security tests: thread isolation, no endpoint without sign-in, prompt injection | ✅ |
+
+Package A note: [iterations/r2-a-backend.md](iterations/r2-a-backend.md).
 
 ### Package B — UI
 

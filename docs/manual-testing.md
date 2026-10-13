@@ -1,14 +1,20 @@
-# CareDesk — Manual Testing in Studio
+# CareDesk — Manual Testing
 
-Questions to try every release 1 feature by hand in LangGraph Studio. Automated checks are in `evals/`; this page is for seeing the behaviour yourself.
+Questions to try every feature by hand, in LangGraph Studio or through the API. Automated checks are in `evals/` and `tests/`; this page is for seeing the behaviour yourself.
 
 ## Before you start
 
-1. Start the server (`uv run langgraph dev`) and open Studio in Chrome.
+1. Start Postgres (`docker compose up -d`), then the server (`uv run langgraph dev`), and open Studio in Chrome.
 2. Set the caller's identity: in **Graph** mode, click **Manage Assistants** (bottom left), open **Default configuration**, and set `user_id` and `role`. Tip: save one assistant per identity below, then switch the **Active** one.
 3. **Start a new thread whenever you change identity**, so the earlier conversation is not carried over.
 
 "Today" in the data is Monday, 5 October 2026. Without an identity (`user_id 0`, `role unknown`), the assistant shows no records.
+
+### Through the API instead
+
+Start the backend (`uv run uvicorn backend.main:app --env-file .env`) and open http://127.0.0.1:8000/docs. Sign in with `POST /auth/login` using an email and password from `data/demo_accounts.csv`, press **Authorize** and paste the token, create a thread with `POST /threads`, and ask with `POST /threads/{thread_id}/messages`. The identity comes from the account, so the identities below become accounts: for example Peter Bennett is `peter.bennett@example.org`, and staff Karen Mitchell is `karen.mitchell@staff.example.org`.
+
+Also worth trying: open another user's thread (expect 404), and call any endpoint without a token (expect 401).
 
 ## A. Staff — `user_id 1`, `role staff` (Karen Mitchell, nurse)
 
@@ -84,7 +90,7 @@ Questions to try every release 1 feature by hand in LangGraph Studio. Automated 
 
 ## Reset the data
 
-Each emergency test writes an incident to `data/caredesk.db`. To start clean:
+Each emergency test writes an incident to the database. To start clean (this also deletes accounts' conversations and gives everyone new demo passwords):
 
 ```bash
 uv run python scripts/seed_db.py

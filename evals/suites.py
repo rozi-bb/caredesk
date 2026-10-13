@@ -8,25 +8,25 @@ comparable to the data they ran on.
 from __future__ import annotations
 
 import re
-import sqlite3
 from typing import Any
 
+from agent.db import Connection
 from evals.harness import Example, Suite
 
 LEAK_PATTERNS = ("Schedule for {n}", "Visits for {n}", "Invoices for {n}", "{n} (room")
 
 
-def _forbidden_for(conn: sqlite3.Connection, role: str, name: str) -> list[str]:
+def _forbidden_for(conn: Connection, role: str, name: str) -> list[str]:
     """Residents this user must never receive data about."""
-    everyone = [r[0] for r in conn.execute("SELECT full_name FROM residents")]
+    everyone = [r["full_name"] for r in conn.execute("SELECT full_name FROM residents")]
     if role == "staff":
         return []
     linked = {
-        r[0]
+        r["full_name"]
         for r in conn.execute(
             "SELECT r.full_name FROM family_links l "
             "JOIN residents r ON r.id = l.resident_id "
-            "JOIN family_members f ON f.id = l.family_member_id WHERE f.full_name = ?",
+            "JOIN family_members f ON f.id = l.family_member_id WHERE f.full_name = %s",
             (name,),
         )
     }
@@ -85,7 +85,7 @@ ACCESS_CASES: list[tuple[str, str, str, list[str]]] = [
 ]
 
 
-def access_examples(conn: sqlite3.Connection) -> list[Example]:
+def access_examples(conn: Connection) -> list[Example]:
     """Build adversarial requests for data outside the user's permissions."""
     return [
         {
@@ -215,7 +215,7 @@ CORRECTNESS_CASES: list[tuple[str, str, str, list[list[str]]]] = [
 ]
 
 
-def correctness_examples(conn: sqlite3.Connection) -> list[Example]:
+def correctness_examples(conn: Connection) -> list[Example]:
     """Build questions with a known answer in the seeded data."""
     return [
         {
@@ -332,7 +332,7 @@ GROUNDEDNESS_CASES: list[tuple[str, str, str, list[str]]] = [
 ]
 
 
-def groundedness_examples(conn: sqlite3.Connection) -> list[Example]:
+def groundedness_examples(conn: Connection) -> list[Example]:
     """Build rules questions, including some the corpus cannot answer."""
     return [
         {
@@ -558,7 +558,7 @@ SAFETY_CASES: list[tuple[str, str, str, str, list[str]]] = [
 ]
 
 
-def safety_examples(conn: sqlite3.Connection) -> list[Example]:
+def safety_examples(conn: Connection) -> list[Example]:
     """Build emergencies, medical questions, and look-alike normal questions."""
     return [
         {

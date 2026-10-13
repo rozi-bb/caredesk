@@ -3,25 +3,27 @@
 | | |
 |---|---|
 | Status | Draft |
-| Release | 1 |
+| Release | 2, package A (backend) |
 | Last updated | 2026-10-13 |
 
 How CareDesk is built. What it does is in [prd.md](prd.md); why each choice was made is in [adr/](adr/).
 
 ## 1. Overview
 
-Release 1 runs locally: one LangGraph graph on the Agent Server (`langgraph dev`), used through LangGraph Studio. There is no backend API or user app yet.
+Everything runs locally. Our own backend (FastAPI) signs users in and runs the graph ([ADR-0020](adr/0020-own-backend-not-agent-server.md)). One Postgres database in Docker holds all app data ([ADR-0021](adr/0021-one-postgres-database.md)). The chat UI arrives in package B; until then the API is called directly.
 
 ```mermaid
 flowchart LR
-    U["Studio<br/>(message + user_id + role)"] --> S["Agent Server<br/>(langgraph dev)"]
-    S --> G["CareDesk graph"]
+    C["Client<br/>(API now, UI in package B)"] -->|"Bearer token"| B["Backend<br/>FastAPI"]
+    B --> G["CareDesk graph"]
     G --> M["DeepSeek"]
-    G --> DB[("Operational DB<br/>SQLite")]
     G --> V[("Rules index<br/>F-tags + handbook")]
-    S --> P[("Conversation state<br/>managed by Agent Server")]
+    B --> PG[("Postgres<br/>records, accounts,<br/>threads, usage, checkpoints")]
+    G --> PG
     G -. traces .-> L["LangSmith"]
 ```
+
+For development, the same graph still runs in Studio through `langgraph dev`, with identity typed in by hand.
 
 ## 2. Graph
 
@@ -81,7 +83,15 @@ Staff asks "What's on Mary Johnson's schedule today?":
 
 ## 3. Identity
 
-Each run carries the caller's `user_id` and `role` (`staff` or `family`) in the runtime context. For now they are typed into Studio. Tools read identity from there, never from the chat, so a user cannot change who they are by saying so.
+Each run carries the caller's `user_id` and `role` (`staff` or `family`) in the runtime context. Tools read identity from there, never from the chat, so a user cannot change who they are by saying so.
+
+In the app, identity comes from sign-in ([ADR-0022](adr/0022-accounts-created-by-the-home.md), [ADR-0023](adr/0023-signed-tokens-for-sign-in.md)):
+
+1. `POST /auth/login` checks email and password against a one-way hash and returns a signed token (8 hours).
+2. Every request sends the token. The backend checks it and loads the account from the database.
+3. The account's staff or family record becomes `Context(user_id, role)` for the run. The request body cannot change it.
+
+In Studio, `user_id` and `role` are still typed in by hand.
 
 ## 4. Tools
 
@@ -89,48 +99,78 @@ All tools are read-only.
 
 | Tool | Reads from |
 |---|---|
-| `get_my_profile`, `get_resident`, `get_schedule`, `get_activities`, `get_visits`, `get_incidents` (staff only), `get_billing` | Operational DB |
+| `get_my_profile`, `get_resident`, `get_schedule`, `get_activities`, `get_visits`, `get_incidents` (staff only), `get_billing` | Postgres, through a read-only connection |
 | `search_rules` | Rules index: top 5 passages scoring 0.6 or more, each with its source label |
 
 - Every query applies the caller's permissions before returning rows (`src/agent/records.py`).
 - Identity reaches tools through the injected `ToolRuntime`, which the model cannot see or fill in.
 - The model only picks a tool and its parameters. It never writes SQL.
+- Tool connections are read-only: Postgres itself rejects any write on them. Only the emergency incident uses a writable connection.
 
-## 5. Data
+## 5. Backend API
+
+Code: `src/backend/` (`main.py` routes, `store.py` queries, `security.py` passwords and tokens, `config.py` settings).
+
+| Endpoint | Does |
+|---|---|
+| `GET /health` | Server and database are up |
+| `POST /auth/login` | Email and password in, token out. Wrong email and wrong password get the same reply |
+| `GET /me` | Who is signed in |
+| `POST /threads`, `GET /threads` | Start a conversation; list your own |
+| `GET /threads/{id}/messages` | History of one of your conversations |
+| `POST /threads/{id}/messages` | Ask a question; the answer streams back |
+
+Everything except `/health` and `/auth/login` needs a token. A thread that belongs to someone else gets the same 404 as one that does not exist.
+
+**Chat endpoint.** Check the token, check the thread is yours, run the graph, stream the answer as server-sent events, record usage:
+
+- `token` events carry pieces of the answer. Only the `agent` node's model output is streamed; triage output stays internal. Fixed emergency and clinical replies are sent as one piece.
+- A final `done` event carries the triage route, or `error` if something failed.
+- One `usage_events` row per request: tokens (from LangChain's usage callback), time taken, route. Usage never blocks a request ([ADR-0009](adr/0009-no-hard-usage-limits.md)).
+
+The graph is compiled with LangGraph's Postgres checkpointer, so conversations survive a restart. The checkpointer creates its own tables on startup.
+
+Run it with `uv run uvicorn backend.main:app --env-file .env`.
+
+## 6. Data
 
 | Store | Holds | Written by |
 |---|---|---|
-| Operational DB (SQLite) | Residents, family links, staff, schedules, activities, visits, incidents, billing | Seed script with a fixed seed; at runtime, only emergency incidents |
+| Postgres: records | Residents, family links, staff, schedules, activities, visits, incidents, billing | Seed script with a fixed seed; at runtime, only emergency incidents |
+| Postgres: app | Accounts, thread owners, usage events | Seed script (accounts); backend |
+| Postgres: checkpoints | Messages per thread | LangGraph's checkpointer |
 | Rules index (`data/rules_index.json`) | 204 passages from 14 F-tags and the handbook, embedded locally | `scripts/build_rules_index.py` |
-| Conversation state | Messages per thread | The Agent Server |
 
-"Today" is fixed at 2026-10-05 (`REFERENCE_DATE` in `src/agent/db`), so answers and evaluations do not change from day to day.
+- Schema changes are Alembic migrations in plain SQL (`migrations/versions/`). The seed script drops the schema, migrates it, and fills it, so reseeding also deletes accounts and conversations.
+- Postgres runs in Docker (`docker-compose.yml`). `DATABASE_URL` overrides the local default.
+- "Today" is fixed at 2026-10-05 (`REFERENCE_DATE` in `src/agent/db`), so answers and evaluations do not change from day to day.
 
-## 6. Models
+## 7. Models
 
 | Use | Model |
 |---|---|
 | Triage | `deepseek-flash` |
 | Answers | `deepseek-flash`; `deepseek-v4-pro` if evaluation shows it is needed |
 | Embeddings | `BAAI/bge-small-en-v1.5`, local through fastembed ([ADR-0015](adr/0015-local-embeddings-in-memory-index.md)) |
-| Evaluation judge | Not decided (section 9) |
+| Evaluation judge | Not decided (section 10) |
 
-## 7. Observability
+## 8. Observability
 
-Every run is traced in LangSmith (project `caredesk`) and tagged with `user_id` and `role`, so quality and cost can be split per user and role.
+Every run is traced in LangSmith (project `caredesk`) and tagged with `user_id` and `role`; runs from the backend also carry `account_id` and `thread_id`. Quality and cost can be split per user and role, and the same tokens are in `usage_events`.
 
-## 8. Evaluation
+## 9. Evaluation
 
-Evaluations run in LangSmith against the four categories in prd.md section 8, using code-based checks ([ADR-0014](adr/0014-code-based-evaluators.md)). Datasets are in `evals/suites.py`, versioned by name. Each run uses a fresh copy of the database.
+Evaluations run in LangSmith against the four categories in prd.md section 8, using code-based checks ([ADR-0014](adr/0014-code-based-evaluators.md)). Datasets are in `evals/suites.py`, versioned by name. Each run seeds a throwaway Postgres database and drops it afterwards; unit tests do the same.
 
 | Layer | Checks | Calls an API? |
 |---|---|---|
-| Unit tests | Permission filters, routing | No |
+| Unit tests | Permission filters, routing, sign-in, thread isolation, streaming (fake models) | No |
 | Integration tests | The whole graph with a real model | Yes |
 | Evaluations | Answers, citations, safety, access control | Yes |
 
-## 9. Open decisions
+## 10. Open decisions
 
 | Decision | Constraint | Needed by |
 |---|---|---|
 | Evaluation judge | Must be a different provider from the answering model | First LLM-as-judge evaluation |
+| Rate limiting | Must never block an emergency message (prd.md section 10) | Before the app is reachable by others |

@@ -1,43 +1,43 @@
-"""Operational database of the nursing home."""
+"""Connections to the home's Postgres database (ADR-0021)."""
 
 import os
-import sqlite3
 from datetime import date
-from pathlib import Path
+from typing import Any
+from urllib.parse import urlsplit, urlunsplit
+
+import psycopg
+from psycopg.rows import dict_row
 
 # "Today" inside the synthetic data. Fixed so that answers about "today"
 # do not change from one day to the next and evaluations stay comparable.
 REFERENCE_DATE = date(2026, 10, 5)
 
-SCHEMA_PATH = Path(__file__).parent / "schema.sql"
+DEFAULT_DATABASE_URL = "postgresql://caredesk:caredesk@localhost:5432/caredesk"
+
+Connection = psycopg.Connection[dict[str, Any]]
 
 
-def db_path() -> Path:
-    """Return the database file, from CAREDESK_DB_PATH or the default location."""
-    return Path(os.environ.get("CAREDESK_DB_PATH", "data/caredesk.db"))
+def database_url() -> str:
+    """Return the database URL, from DATABASE_URL or the local Docker default."""
+    return os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL)
 
 
-def connect_readonly() -> sqlite3.Connection:
-    """Open the database read-only, so tools cannot change data even by mistake."""
-    path = db_path()
-    if not path.exists():
-        raise FileNotFoundError(
-            f"Database not found at {path}. Build it with: uv run python scripts/seed_db.py"
-        )
-    conn = sqlite3.connect(f"file:{path.resolve()}?mode=ro", uri=True)
-    conn.row_factory = sqlite3.Row
-    return conn
+def url_with_database(url: str, name: str) -> str:
+    """Return the same server's URL, pointing at another database on it."""
+    return urlunsplit(urlsplit(url)._replace(path=f"/{name}"))
 
 
-def connect_writable() -> sqlite3.Connection:
-    """Open the database for writing. Only emergency incident records use this.
+def connect_readonly() -> Connection:
+    """Open a connection whose transactions are read-only.
 
-    Uses mode=rw so a missing database raises an error instead of being
-    silently created empty.
+    Postgres rejects any write on it, so tools cannot change data even by
+    mistake. Raises psycopg.OperationalError if the database is unreachable.
     """
-    path = db_path()
-    if not path.exists():
-        raise FileNotFoundError(f"Database not found at {path}.")
-    conn = sqlite3.connect(f"file:{path.resolve()}?mode=rw", uri=True)
-    conn.execute("PRAGMA foreign_keys = ON")
+    conn = psycopg.connect(database_url(), row_factory=dict_row)
+    conn.read_only = True
     return conn
+
+
+def connect_writable() -> Connection:
+    """Open a connection that may write. Only emergency incident records use this."""
+    return psycopg.connect(database_url(), row_factory=dict_row)

@@ -1,7 +1,6 @@
-import sqlite3
-from pathlib import Path
 from typing import Any
 
+import psycopg
 import pytest
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage, HumanMessage
@@ -36,24 +35,24 @@ def no_agent() -> NoCallModel:
     return NoCallModel(messages=iter([AIMessage(content="unused")]))
 
 
-def family_id(db: Path, name: str) -> int:
-    with sqlite3.connect(db) as conn:
-        return int(
-            conn.execute(
-                "SELECT id FROM family_members WHERE full_name = ?", (name,)
-            ).fetchone()[0]
-        )
+def family_id(db: str, name: str) -> int:
+    with psycopg.connect(db) as conn:
+        row = conn.execute(
+            "SELECT id FROM family_members WHERE full_name = %s", (name,)
+        ).fetchone()
+        assert row is not None
+        return int(row[0])
 
 
-def incident(db: Path, incident_id: int) -> tuple[Any, ...]:
-    with sqlite3.connect(db) as conn:
-        return tuple(
-            conn.execute(
-                "SELECT resident_id, reported_by_staff_id, category, status, description "
-                "FROM incidents WHERE id = ?",
-                (incident_id,),
-            ).fetchone()
-        )
+def incident(db: str, incident_id: int) -> tuple[Any, ...]:
+    with psycopg.connect(db) as conn:
+        row = conn.execute(
+            "SELECT resident_id, reported_by_staff_id, category, status, description "
+            "FROM incidents WHERE id = %s",
+            (incident_id,),
+        ).fetchone()
+        assert row is not None
+        return tuple(row)
 
 
 async def ask(graph: Any, text: str, ctx: Context) -> dict[str, Any]:
@@ -63,7 +62,7 @@ async def ask(graph: Any, text: str, ctx: Context) -> dict[str, Any]:
     return result
 
 
-async def test_keyword_emergency_needs_no_model_and_is_recorded(db_env: Path) -> None:
+async def test_keyword_emergency_needs_no_model_and_is_recorded(db_env: str) -> None:
     graph = build_graph(no_agent(), RunnableLambda(broken))
     karen = Context(user_id=family_id(db_env, "Karen Mitchell"), role="family")
 
@@ -79,7 +78,7 @@ async def test_keyword_emergency_needs_no_model_and_is_recorded(db_env: Path) ->
     assert "not breathing" in text
 
 
-async def test_resident_left_empty_when_it_cannot_be_known(db_env: Path) -> None:
+async def test_resident_left_empty_when_it_cannot_be_known(db_env: str) -> None:
     graph = build_graph(no_agent(), classifier("emergency"))
     linda = Context(
         user_id=family_id(db_env, "Linda Moreno"), role="family"
@@ -88,24 +87,26 @@ async def test_resident_left_empty_when_it_cannot_be_known(db_env: Path) -> None
     assert incident(db_env, result["incident_id"])[0] is None
 
 
-async def test_triage_failure_is_treated_as_emergency(db_env: Path) -> None:
+async def test_triage_failure_is_treated_as_emergency(db_env: str) -> None:
     graph = build_graph(no_agent(), RunnableLambda(broken))
     result = await ask(graph, "Can you help me with something?", Context())
     assert result["route"] == "emergency"
 
 
 async def test_emergency_reply_survives_a_database_failure(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("CAREDESK_DB_PATH", str(tmp_path / "missing.db"))
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql://nobody:wrong@127.0.0.1:1/missing?connect_timeout=1",
+    )
     graph = build_graph(no_agent(), classifier("emergency"))
     result = await ask(graph, "Help, she collapsed", Context())
     assert result["incident_id"] is None
     assert NOT_RECORDED in result["messages"][-1].text
-    assert not (tmp_path / "missing.db").exists()
 
 
-async def test_clinical_question_gets_the_fixed_decline(db_env: Path) -> None:
+async def test_clinical_question_gets_the_fixed_decline(db_env: str) -> None:
     graph = build_graph(no_agent(), classifier("clinical"))
     result = await ask(graph, "Should he take an extra dose?", Context())
     assert result["route"] == "clinical"
@@ -118,7 +119,7 @@ def test_callers_can_only_send_messages() -> None:
     assert {"route", "incident_id"} <= set(graph.get_output_jsonschema()["properties"])
 
 
-async def test_route_sent_by_caller_is_ignored(db_env: Path) -> None:
+async def test_route_sent_by_caller_is_ignored(db_env: str) -> None:
     graph = build_graph(no_agent(), classifier("clinical"))
     result = await graph.ainvoke(
         {
@@ -137,7 +138,7 @@ class AnsweringModel(GenericFakeChatModel):
         return self
 
 
-async def test_normal_question_reaches_the_agent(db_env: Path) -> None:
+async def test_normal_question_reaches_the_agent(db_env: str) -> None:
     agent = AnsweringModel(messages=iter([AIMessage(content="Here is the schedule.")]))
     graph = build_graph(agent, classifier("normal"))
     result = await ask(graph, "What's on today?", Context())

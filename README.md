@@ -2,7 +2,7 @@
 
 An administrative assistant for a fictional nursing home, built with LangGraph. It answers staff and family questions from the home's data and from federal nursing-home regulations, cites its sources, and declines anything medical.
 
-**Status:** release 1 (`v0.1.0`): read-only agent for staff and family, run locally in LangGraph Studio. There is no end-user app yet.
+**Status:** release 1 (`v0.1.0`) is a read-only agent for staff and family. Release 2 is in progress: the backend with sign-in is done; the chat UI is next. Everything runs locally.
 
 ## Demo
 
@@ -37,7 +37,7 @@ More questions to try are in [docs/manual-testing.md](docs/manual-testing.md).
 
 ## Getting started
 
-Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
+Requires Python 3.11+, [uv](https://docs.astral.sh/uv/), and Docker.
 
 1. Install dependencies:
 
@@ -51,21 +51,33 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
    cp .env.example .env
    ```
 
-   You need a LangSmith API key and a DeepSeek API key.
+   You need a LangSmith API key, a DeepSeek API key, and an `AUTH_SECRET` (the file says how to generate one).
 
-3. Build the sample database (synthetic data, rebuilt identically every time):
+3. Start Postgres:
+
+   ```bash
+   docker compose up -d
+   ```
+
+4. Build the sample database (synthetic data, rebuilt identically every time). This also creates an account for every staff and family member, with random demo passwords written to `data/demo_accounts.csv`:
 
    ```bash
    uv run python scripts/seed_db.py
    ```
 
-4. Build the rules search index (downloads a small local embedding model the first time):
+5. Build the rules search index (downloads a small local embedding model the first time):
 
    ```bash
    uv run python scripts/build_rules_index.py
    ```
 
-5. Start the local server and open Studio:
+6. Start the backend, then open http://127.0.0.1:8000/docs to try the API. Sign in with `POST /auth/login`, then press **Authorize** and paste the token:
+
+   ```bash
+   uv run uvicorn backend.main:app --env-file .env
+   ```
+
+   For development, the graph also runs in LangGraph Studio, with the identity typed in by hand:
 
    ```bash
    uv run langgraph dev
@@ -73,7 +85,7 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ## Evaluation
 
-Runs the evaluation suites in LangSmith against a freshly seeded copy of the database, and exits with an error if any suite misses its target (targets are in [prd.md](docs/prd.md) section 8):
+Runs the evaluation suites in LangSmith against a freshly seeded throwaway database (Postgres must be running), and exits with an error if any suite misses its target (targets are in [prd.md](docs/prd.md) section 8):
 
 ```bash
 uv run python -m evals.run

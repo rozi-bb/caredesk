@@ -39,6 +39,7 @@ The project owner is learning and must be able to explain every part of this cod
 
 - Python 3.13, managed with `uv`
 - LangGraph 1.x, LangChain 1.x
+- Backend: FastAPI; Postgres 17 in Docker, accessed with psycopg 3; migrations with Alembic in plain SQL
 - Models: DeepSeek through `langchain-deepseek` (`deepseek-flash` for high-volume steps, `deepseek-v4-pro` for final answers when needed). OpenAI is planned for embeddings and the eval judge but is not configured yet.
 - Tracing and evaluation: LangSmith (project `caredesk`)
 
@@ -47,6 +48,7 @@ The project owner is learning and must be able to explain every part of this cod
 Setup and running the server are in `README.md`. Commands for the development loop:
 
 ```bash
+docker compose up -d             # Postgres; unit tests and evaluations need it
 uv run pytest tests/unit_tests   # unit tests, no API calls
 uv run pytest tests/integration_tests   # integration tests, real API calls
 uv run ruff check .              # lint
@@ -65,8 +67,10 @@ uv run python -m evals.run       # LangSmith evaluations (real API calls)
 - `src/agent/rules.py`: rules search over `corpus/` (F-tags and the handbook)
 - `src/agent/triage.py`: emergency and clinical triage, fixed responses, and the emergency incident write
 - `corpus/`: the rules text that is indexed; `scripts/build_rules_index.py` builds `data/rules_index.json`
-- `src/agent/db/`: database schema (`schema.sql`) and the fixed `REFERENCE_DATE` that stands for "today"
-- `scripts/seed_db.py`: generates the synthetic database into `data/` (git-ignored)
+- `src/agent/db/`: database connections and the fixed `REFERENCE_DATE` that stands for "today"
+- `src/backend/`: the HTTP API: sign-in, conversations, the streaming chat endpoint (`main.py`), app-table queries (`store.py`), passwords and tokens (`security.py`)
+- `migrations/`: Alembic migrations; every schema change is a new file here
+- `scripts/seed_db.py`: rebuilds the database with synthetic data and demo accounts (passwords go to git-ignored `data/demo_accounts.csv`)
 - `tests/unit_tests/`, `tests/integration_tests/`
 - `evals/`: evaluation datasets and checks (`suites.py`) and the runner (`run.py`)
 - `docs/`: see the table under Project

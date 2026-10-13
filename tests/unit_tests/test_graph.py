@@ -1,7 +1,7 @@
 from collections.abc import Iterator
-from pathlib import Path
 from typing import Any
 
+import psycopg
 import pytest
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import (
@@ -92,12 +92,9 @@ def test_the_model_cannot_set_identity_through_tool_arguments() -> None:
         assert not fields & {"runtime", "user_id", "role", "context"}, tool.name
 
 
-async def test_tools_use_the_identity_from_the_run_context(db_env: Path) -> None:
-    import sqlite3
-
-    conn = sqlite3.connect(db_env)
-    ids = dict(conn.execute("SELECT full_name, id FROM family_members").fetchall())
-    conn.close()
+async def test_tools_use_the_identity_from_the_run_context(db_env: str) -> None:
+    with psycopg.connect(db_env) as conn:
+        ids = dict(conn.execute("SELECT full_name, id FROM family_members").fetchall())
 
     async def billing_reply(user: str) -> str:
         model = RecordingModel(

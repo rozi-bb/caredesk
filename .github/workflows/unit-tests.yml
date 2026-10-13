@@ -25,6 +25,21 @@ jobs:
         os: [ubuntu-latest]
         python-version: ["3.11", "3.12"]
     runs-on: ${{ matrix.os }}
+    # Unit tests create throwaway databases on this server (tests/conftest.py).
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: caredesk
+          POSTGRES_PASSWORD: caredesk
+          POSTGRES_DB: caredesk
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U caredesk -d caredesk"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}

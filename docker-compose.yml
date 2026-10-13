@@ -1,0 +1,21 @@
+# Local development only. The credentials below are not secrets: the database
+# listens on localhost and holds synthetic data.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: caredesk
+      POSTGRES_PASSWORD: caredesk
+      POSTGRES_DB: caredesk
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U caredesk -d caredesk"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  postgres-data:

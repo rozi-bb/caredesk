@@ -9,10 +9,10 @@ emergency, because a false alarm is cheap and a missed emergency is not.
 from __future__ import annotations
 
 import re
-import sqlite3
 from datetime import datetime
 from typing import Literal
 
+import psycopg
 from pydantic import BaseModel, Field
 
 from agent.context import Context
@@ -106,33 +106,34 @@ def record_emergency(ctx: Context, message: str) -> int | None:
     """
     try:
         conn = connect_writable()
-    except (FileNotFoundError, sqlite3.Error):
+    except psycopg.Error:
         return None
     try:
-        resident: int | None = None
-        reporter: int | None = None
-        if ctx.role == "family":
-            linked = conn.execute(
-                "SELECT resident_id FROM family_links WHERE family_member_id = ?",
-                (ctx.user_id,),
-            ).fetchall()
-            if len(linked) == 1:
-                resident = linked[0][0]
-        elif ctx.role == "staff":
-            known = conn.execute(
-                "SELECT 1 FROM staff WHERE id = ?", (ctx.user_id,)
+        with conn:
+            resident: int | None = None
+            reporter: int | None = None
+            if ctx.role == "family":
+                linked = conn.execute(
+                    "SELECT resident_id FROM family_links WHERE family_member_id = %s",
+                    (ctx.user_id,),
+                ).fetchall()
+                if len(linked) == 1:
+                    resident = linked[0]["resident_id"]
+            elif ctx.role == "staff":
+                known = conn.execute(
+                    "SELECT 1 FROM staff WHERE id = %s", (ctx.user_id,)
+                ).fetchone()
+                reporter = ctx.user_id if known else None
+            when = datetime.combine(REFERENCE_DATE, datetime.now().time()).replace(
+                second=0, microsecond=0
+            )
+            text = f'Automatic record: emergency message from {ctx.role} #{ctx.user_id}: "{message[:500]}"'
+            row = conn.execute(
+                "INSERT INTO incidents (resident_id, reported_by_staff_id, occurred_at, "
+                "category, description, status) "
+                "VALUES (%s, %s, %s, 'emergency', %s, 'needs_action') RETURNING id",
+                (resident, reporter, when, text),
             ).fetchone()
-            reporter = ctx.user_id if known else None
-        when = f"{REFERENCE_DATE.isoformat()}T{datetime.now():%H:%M}"
-        text = f'Automatic record: emergency message from {ctx.role} #{ctx.user_id}: "{message[:500]}"'
-        cursor = conn.execute(
-            "INSERT INTO incidents (resident_id, reported_by_staff_id, occurred_at, "
-            "category, description, status) VALUES (?, ?, ?, 'emergency', ?, 'needs_action')",
-            (resident, reporter, when, text),
-        )
-        conn.commit()
-        return cursor.lastrowid
-    except sqlite3.Error:
+            return int(row["id"]) if row else None
+    except psycopg.Error:
         return None
-    finally:
-        conn.close()
