@@ -1,6 +1,7 @@
 # ADR-0011: The Agent Server handles conversation persistence
 
 - Status: Accepted, verified in feature 9.1 (memory survived a server restart; see [iteration note](../iterations/9.1-conversation-memory.md))
+- Superseded by [ADR-0020](0020-own-backend-not-agent-server.md) for the app from release 2; still applies to development in Studio
 - Date: 2026-10-03
 
 ## Context

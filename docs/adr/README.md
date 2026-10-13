@@ -16,7 +16,7 @@ Format: Status, Date, Context, Decision, Alternatives considered, Consequences. 
 | [0008](0008-release-1-agent-only-read-only.md) | Release 1 is agent-only and read-only | Accepted |
 | [0009](0009-no-hard-usage-limits.md) | No hard usage limits | Accepted |
 | [0010](0010-judge-from-a-different-provider.md) | Evaluation judge from a different provider | Accepted |
-| [0011](0011-agent-server-handles-persistence.md) | The Agent Server handles conversation persistence | Accepted, verified |
+| [0011](0011-agent-server-handles-persistence.md) | The Agent Server handles conversation persistence | Superseded by 0020 for the app |
 | [0012](0012-family-see-medication-round-times.md) | Family members see medication-round times | Accepted |
 | [0013](0013-out-of-scope-residents-look-nonexistent.md) | Residents outside the user's scope look nonexistent | Accepted |
 | [0014](0014-code-based-evaluators.md) | Code-based evaluators in release 1 | Accepted |
@@ -24,3 +24,7 @@ Format: Status, Date, Context, Decision, Alternatives considered, Consequences. 
 | [0016](0016-emergency-keyword-precheck.md) | A narrow keyword check before the triage model | Accepted |
 | [0017](0017-emergency-records-never-block.md) | Emergency records never block the emergency response | Accepted |
 | [0018](0018-release-targets.md) | Release targets for correctness and groundedness | Accepted |
+| [0019](0019-release-2-thin-local-app.md) | Release 2 is a thin app that runs locally | Accepted |
+| [0020](0020-own-backend-not-agent-server.md) | Our own backend runs the graph, not the Agent Server | Accepted |
+| [0021](0021-one-postgres-database.md) | One Postgres database for all app data | Accepted |
+| [0022](0022-accounts-created-by-the-home.md) | Email and password accounts, created by the home | Accepted |

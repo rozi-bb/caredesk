@@ -48,30 +48,45 @@ Decisions made along the way: embeddings and vector store in 9.3 (ADR-0015), eme
 | Update README with a short demo | ✅ |
 | Tag `v0.1.0` | ✅ [note](iterations/release-1.md) |
 
-## Release 2 — thin version, end to end
+## Release 2 — thin app, local
 
-Playbook stage 2: a thin version that runs end to end and is used by a few people. Scope is confirmed in prd.md before work starts.
+Playbook stage 2, without deployment: the release 1 agent behind our own backend, with sign-in and a chat UI, running locally ([ADR-0019](adr/0019-release-2-thin-local-app.md)). The four evaluations run again in each package.
+
+### Package A — backend
 
 | # | Step | Status |
 |---|---|---|
-| 10 | Backend skeleton: server with a health check, calls the agent, reads config and secrets from the environment | ⬜ |
-| 11 | Postgres: users, usage history (one row per event), conversation memory; schema changes as migration files | ⬜ |
-| 12 | Login: every request carries the user, and users can open only their own threads | ⬜ |
-| 13 | Chat endpoint: check login, call the agent, record usage, stream the answer | ⬜ |
-| 16 | End-user UI, Chainlit as the candidate | ⬜ |
-| 18 | Business-flow tests: sign-up and login | ⬜ |
-| 19 | Security tests: thread isolation, no API key in the frontend, no endpoint without login, rate limiting, prompt injection | ⬜ |
-| 20 | VPS, domain, HTTPS; Docker Compose behind Nginx | ⬜ |
-| 21 | Separate production keys and environment | ⬜ |
-| 22 | Scheduled database backups, with a tested restore | ⬜ |
-| 23 | Release procedure: tag, backup, deploy, migrate, smoke check, rollback plan | ⬜ |
-| 24 | Quality monitoring: traces, Insights, user feedback | ⬜ |
-| 25 | Cost per user from trace metadata | ⬜ |
-| 26 | Error and uptime monitoring; spending alert at the model provider | ⬜ |
+| 10 | Backend skeleton: FastAPI with a health check, calls the agent, reads config and secrets from the environment ([ADR-0020](adr/0020-own-backend-not-agent-server.md)) | ⬜ |
+| 11 | Postgres in Docker: operational data moved from SQLite, accounts, usage, conversation memory; schema changes as migration files ([ADR-0021](adr/0021-one-postgres-database.md)) | ⬜ |
+| 12 | Sign-in with accounts created by the home; users open only their own threads ([ADR-0022](adr/0022-accounts-created-by-the-home.md)) | ⬜ |
+| 13 | Chat endpoint: check sign-in, call the agent, record usage, stream the answer | ⬜ |
+| 18 | Business-flow tests: sign-in, wrong password, usage recorded | ⬜ |
+| 19 | Security tests: thread isolation, no endpoint without sign-in, prompt injection | ⬜ |
 
-Open before step 19: rate limiting must not block an emergency message ([ADR-0009](adr/0009-no-hard-usage-limits.md)).
+### Package B — UI
+
+| # | Step | Status |
+|---|---|---|
+| 16 | Chat UI in the browser, Chainlit as the candidate | ⬜ |
+| 19 | Security tests: the API key never reaches the browser | ⬜ |
+
+Open before step 19: rate limiting must not block an emergency message (prd.md section 10).
 
 Not planned: packages and usage limits (step 14) and payments (step 15). CareDesk serves one home that pays per use, and a hard limit could block an emergency ([ADR-0009](adr/0009-no-hard-usage-limits.md)).
+
+## Package C — deploy and monitor
+
+After release 2, when the app needs to be online.
+
+| # | Step |
+|---|---|
+| 20 | VPS, domain, HTTPS; Docker Compose behind Nginx |
+| 21 | Separate production keys and environment |
+| 22 | Scheduled database backups, with a tested restore |
+| 23 | Release procedure: tag, backup, deploy, migrate, smoke check, rollback plan |
+| 24 | Quality monitoring: traces, Insights, user feedback |
+| 25 | Cost per user from trace metadata and usage records |
+| 26 | Error and uptime monitoring; spending alert at the model provider |
 
 ## Later
 
