@@ -18,7 +18,7 @@ from evals.suites import SUITES
 
 
 async def main(names: list[str]) -> int:
-    """Run the named suites and return a non-zero exit code on a required failure."""
+    """Run the named suites and return a non-zero exit code when a suite misses a target."""
     unknown = [n for n in names if n not in SUITES]
     if unknown:
         print(

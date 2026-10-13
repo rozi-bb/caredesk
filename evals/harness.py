@@ -30,7 +30,8 @@ class Suite:
     description: str
     build_examples: Callable[[sqlite3.Connection], list[Example]]
     evaluators: list[Evaluator]
-    required: frozenset[str] = frozenset()  # checks that must pass on every example
+    # Minimum pass rate per check; a suite fails if any check falls below it.
+    targets: dict[str, float] = field(default_factory=dict)
     results: dict[str, list[bool]] = field(default_factory=dict)
 
 
@@ -136,14 +137,15 @@ async def run_suite(client: Client, suite: Suite, db: Path) -> bool:
     passed = True
     for key, scores in suite.results.items():
         rate = sum(scores) / len(scores)
-        required = key in suite.required
+        target = suite.targets.get(key)
         print(
-            f"  {key:<28}{sum(scores):>3}/{len(scores):<3} {rate:6.0%}{'  (required 100%)' if required else ''}"
+            f"  {key:<28}{sum(scores):>3}/{len(scores):<3} {rate:6.0%}"
+            + (f"  (target {target:.0%})" if target is not None else "")
         )
-        passed = passed and (rate == 1.0 or not required)
+        passed = passed and (target is None or rate >= target)
     if failures:
         print("  failures:")
         print("\n".join(failures))
-    if suite.required:
-        print(f"  required checks: {'PASS' if passed else 'FAIL'}")
+    if suite.targets:
+        print(f"  targets: {'PASS' if passed else 'FAIL'}")
     return passed

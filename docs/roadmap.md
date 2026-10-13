@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Last updated | 2026-10-03 |
+| Last updated | 2026-10-13 |
 
 The order of work. What each feature must do is in [prd.md](prd.md); how it is built is in [architecture.md](architecture.md). Step numbers refer to the project's development playbook.
 
@@ -43,10 +43,10 @@ Decisions made along the way: embeddings and vector store in 9.3 (ADR-0015), eme
 
 | Step | Status |
 |---|---|
-| Full evaluation across all four categories in prd.md section 8 | ⬜ |
-| Set targets for correctness and groundedness from the baseline | ⬜ |
-| Update README with a short demo | ⬜ |
-| Tag `v0.1.0` | ⬜ |
+| Full evaluation across all four categories in prd.md section 8 | ✅ |
+| Set targets for correctness and groundedness from the baseline | ✅ [ADR-0018](adr/0018-release-targets.md) |
+| Update README with a short demo | ✅ |
+| Tag `v0.1.0` | ✅ [note](iterations/release-1.md) |
 
 ## After release 1
 

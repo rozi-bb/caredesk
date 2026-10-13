@@ -1,6 +1,6 @@
 [project]
 name = "caredesk"
-version = "0.0.1"
+version = "0.1.0"
 description = "Administrative assistant for a fictional nursing home, built with LangGraph."
 authors = [
     { name = "Rozi" },

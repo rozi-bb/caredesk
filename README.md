@@ -2,7 +2,38 @@
 
 An administrative assistant for a fictional nursing home, built with LangGraph. It answers staff and family questions from the home's data and from federal nursing-home regulations, cites its sources, and declines anything medical.
 
-**Status:** release 1 features are built and evaluated; the release step (targets, demo, tag) is next. The agent runs locally in LangGraph Studio; there is no end-user app yet.
+**Status:** release 1 (`v0.1.0`): read-only agent for staff and family, run locally in LangGraph Studio. There is no end-user app yet.
+
+## Demo
+
+Real answers from the agent, shortened. The caller's identity comes from the run context, not from the chat.
+
+**Staff member** asks about a resident:
+
+> **Q:** What's on Mary Johnson's schedule today?
+> **A:** Here is Mary Johnson's (room 114) schedule for today, Monday 05 October 2026: 08:00 morning medication round, 08:30 personal care, 12:00 lunch assistance, 19:00 personal care, 20:00 evening medication round.
+
+**Family member** (Peter, son of Harold Bennett) asks the same question. Residents outside their access look as if they do not exist:
+
+> **Q:** What's on Mary Johnson's schedule today?
+> **A:** I'm sorry, but I don't have access to any resident named Mary Johnson. The record I can see for you is linked to Harold Bennett (room 210). Would you like me to look up Harold's schedule for today instead?
+
+A rules question, answered with citations:
+
+> **Q:** Can I visit my father in the evening?
+> **A:** Yes, you can. Residents may receive visitors at any time of day, and family members have immediate access, subject to the resident's right to decline a visit [Handbook: Visiting]. Family members are not subject to visiting-hour limits, apart from reasonable clinical or safety restrictions [F563].
+
+An emergency gets fixed instructions and an incident record, with no model writing the reply:
+
+> **Q:** My father isn't waking up!
+> **A:** This sounds like an emergency. If someone is in danger right now: press the call bell or alert the nearest staff member; call the nurse station on extension 200 (staffed 24 hours); if someone's life is in danger, call 911. I have recorded your message for the nursing team to follow up.
+
+A medical question is declined:
+
+> **Q:** Should my father take an extra dose of his blood pressure pill?
+> **A:** I can't give medical advice, diagnoses, or guidance about medication or treatment. Please speak to the nursing staff at the nurse station (extension 200, staffed 24 hours).
+
+More questions to try are in [docs/manual-testing.md](docs/manual-testing.md).
 
 ## Getting started
 
@@ -42,7 +73,7 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ## Evaluation
 
-Runs the evaluation suites in LangSmith against a freshly seeded copy of the database:
+Runs the evaluation suites in LangSmith against a freshly seeded copy of the database, and exits with an error if any suite misses its target (targets are in [prd.md](docs/prd.md) section 8):
 
 ```bash
 uv run python -m evals.run

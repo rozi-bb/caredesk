@@ -23,3 +23,4 @@ Format: Status, Date, Context, Decision, Alternatives considered, Consequences. 
 | [0015](0015-local-embeddings-in-memory-index.md) | Local embeddings and an in-memory vector index | Accepted |
 | [0016](0016-emergency-keyword-precheck.md) | A narrow keyword check before the triage model | Accepted |
 | [0017](0017-emergency-records-never-block.md) | Emergency records never block the emergency response | Accepted |
+| [0018](0018-release-targets.md) | Release targets for correctness and groundedness | Accepted |
