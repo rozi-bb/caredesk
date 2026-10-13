@@ -91,7 +91,7 @@ Not planned, because nothing is deployed: server, domain, and HTTPS (step 20), p
 
 ## Telegram channel
 
-Staff and family can also chat with CareDesk from Telegram. Telegram is one more client of the backend, like the Chainlit UI; the agent does not change. The bot fetches messages itself (polling), so it runs locally without a public address. The PRD requirement and ADR are written before building.
+Staff and family can also chat with CareDesk from Telegram. Telegram is one more client of the backend, like the Chainlit UI; the agent does not change. The bot fetches messages itself (polling), so it runs locally without a public address. Requirements: prd.md F11–F15; design: [ADR-0027](adr/0027-telegram-as-a-backend-client.md).
 
 | # | Step | Status |
 |---|---|---|

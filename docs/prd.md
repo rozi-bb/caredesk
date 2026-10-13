@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Status | Draft |
-| Release | 2 (release 1 shipped as `v0.1.0`) |
+| Release | Telegram channel (release 2 shipped as `v0.2.1`) |
 | Last updated | 2026-10-13 |
 
 ## 1. Problem
@@ -64,6 +64,18 @@ Release 2 adds no new assistant features. It turns release 1 into an app that pe
 
 F1–F5 keep working unchanged, and F1 now also survives a restart of the app.
 
+## 5b. Functional requirements — Telegram channel
+
+Staff and family members can also chat with CareDesk from Telegram. The assistant, its rules, and the permissions are the same as in the browser ([ADR-0027](adr/0027-telegram-as-a-backend-client.md)).
+
+| ID | Requirement |
+|---|---|
+| F11 | **Connect Telegram.** A signed-in user presses "Connect Telegram" (or types `/telegram`) in the browser and gets a link and a QR code to the bot. The link works once and expires after 10 minutes. Once connected, the browser shows which Telegram account is connected, so a wrong one can be spotted, with a "Disconnect Telegram" button. |
+| F12 | **Chat in Telegram.** A connected user asks questions in a private chat with the bot and gets the same answers, with the same permissions, as in the browser. Who the user is comes only from the connection, never from what they type. |
+| F13 | **Not connected, no data.** Anyone who has not connected gets only instructions to connect and the emergency contacts. |
+| F14 | **One history.** Telegram continues the user's current session; `/new` starts a new one. Sessions from Telegram also appear in the browser sidebar. |
+| F15 | **Disconnect.** Users can disconnect from the browser or with `/disconnect` in Telegram, for example after losing their phone. |
+
 ## 6. Product rules
 
 These hold in every release. They must hold no matter what the user types, including attempts to talk the assistant out of them.
@@ -107,14 +119,20 @@ Release 2 is done when:
 - Business-flow tests pass: sign-in works, a wrong password is rejected, a chat request is recorded as usage, and after signing in again a user finds their earlier sessions in the sidebar and can continue them.
 - Security tests pass, all pass/fail: a user cannot see, open, continue, or delete another user's session, no endpoint works without signing in, the model provider's API key never reaches the browser, and attempts to talk the assistant out of its rules fail.
 
-## 9. Out of scope for release 2
+The Telegram channel is done when:
+
+- Business-flow tests pass: connecting works from the link, a connected user gets answers, `/new` and disconnecting work, and Telegram sessions appear in the browser sidebar.
+- Security tests pass, all pass/fail: a user who has not connected gets no data, a used or expired link is refused, a connected user sees only their own data, the bot answers nothing in group chats, and the bot token and backend key never reach a user.
+
+## 9. Out of scope
 
 - Resident access
 - Write actions such as booking a visit, and human confirmation for them
 - Data entry forms
 - Self sign-up and password reset by email
 - Running on the internet: CareDesk runs locally only and is never deployed ([ADR-0026](adr/0026-no-deployment.md))
-- Notifications outside the app (email, messaging)
+- Notifications outside the app (email, messaging). The Telegram bot only answers; it never writes first
+- WhatsApp, and Telegram group chats
 - Usage limits and payments. The home pays per use; there is never a hard limit, because a limit could block an emergency message ([ADR-0009](adr/0009-no-hard-usage-limits.md))
 - More than one nursing home
 
