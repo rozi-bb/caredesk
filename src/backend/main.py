@@ -1,11 +1,13 @@
-"""HTTP API for CareDesk: sign-in, conversations, and the chat endpoint.
+"""HTTP API for CareDesk: sign-in, conversations, the chat endpoint, and Telegram.
 
 Run locally with:
     uv run uvicorn backend.main:app --env-file .env
 
 The graph is the same one Studio runs. Here it is compiled with a Postgres
 checkpointer, and the caller's identity comes from their account (ADR-0020,
-ADR-0022), never from the request body.
+ADR-0022), never from the request body. Telegram messages arrive through the
+bot, which proves itself with its own key; the user is then whoever that
+Telegram account is connected to (ADR-0027).
 """
 
 from __future__ import annotations
@@ -19,9 +21,9 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core.callbacks import UsageMetadataCallbackHandler
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
@@ -35,7 +37,15 @@ from agent.context import Context
 from agent.graph import build_graph
 from backend import store
 from backend.config import Settings
-from backend.security import create_token, read_token, verify_password
+from backend.security import (
+    LINK_CODE_MINUTES,
+    create_token,
+    hash_link_code,
+    new_link_code,
+    read_token,
+    same_key,
+    verify_password,
+)
 
 log = logging.getLogger(__name__)
 
@@ -97,6 +107,46 @@ class MessageOut(BaseModel):
     content: str
 
 
+class LinkCodeOut(BaseModel):
+    """A one-time link that connects the user's Telegram account."""
+
+    link: str
+    expires_at: datetime
+
+
+class TelegramStatus(BaseModel):
+    """Whether the user's account is connected to Telegram, and to which user."""
+
+    connected: bool
+    username: str | None = None
+    linked_at: datetime | None = None
+
+
+class TelegramUser(BaseModel):
+    """The Telegram user a bot request is about, as Telegram reported it."""
+
+    telegram_user_id: int = Field(gt=0)
+
+
+class ConnectRequest(TelegramUser):
+    """The code from the connect link, and who opened it."""
+
+    code: str = Field(min_length=1, max_length=64)
+    telegram_username: str | None = Field(default=None, max_length=64)
+
+
+class ConnectedOut(BaseModel):
+    """Who the Telegram user is now connected as."""
+
+    name: str
+
+
+class TelegramChatRequest(TelegramUser):
+    """One message from a connected Telegram user."""
+
+    content: str = Field(min_length=1, max_length=4000)
+
+
 TITLE_LENGTH = 60
 
 
@@ -143,6 +193,28 @@ async def current_account(
 
 
 Signed = Annotated[store.Account, Depends(current_account)]
+
+
+_bot_key = APIKeyHeader(name="X-Bot-Key", auto_error=False)
+
+
+async def require_bot(
+    request: Request, key: Annotated[str | None, Depends(_bot_key)]
+) -> None:
+    """Let only the Telegram bot through. Without a configured key the routes do not exist."""
+    cfg: Settings = request.app.state.settings
+    if not cfg.telegram_enabled or cfg.telegram_bot_key is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not Found")
+    if not same_key(key, cfg.telegram_bot_key):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid bot key.")
+
+
+async def connected_account(request: Request, telegram_user_id: int) -> store.Account:
+    """Return the account the Telegram user is connected to, or reject with 403."""
+    account = await store.find_account_by_telegram(pool_of(request), telegram_user_id)
+    if account is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not connected.")
+    return account
 
 
 async def require_thread(
@@ -280,13 +352,103 @@ def create_app(
         events = _answer(
             request.app.state.graph, pool_of(request), account, thread_id, body.content
         )
-        return StreamingResponse(
-            events,
-            media_type="text/event-stream",
-            headers={"Cache-Control": "no-cache"},
+        return _stream(events)
+
+    @app.get("/me/telegram")
+    async def telegram_status(request: Request, account: Signed) -> TelegramStatus:
+        """Say whether the user's account is connected to Telegram."""
+        link = await store.get_telegram_link(pool_of(request), account.id)
+        if link is None:
+            return TelegramStatus(connected=False)
+        return TelegramStatus(
+            connected=True, username=link.telegram_username, linked_at=link.linked_at
         )
 
+    @app.post("/me/telegram/code", status_code=status.HTTP_201_CREATED)
+    async def telegram_code(request: Request, account: Signed) -> LinkCodeOut:
+        """Make a one-time link that connects the user's Telegram account."""
+        cfg: Settings = request.app.state.settings
+        if not cfg.telegram_enabled:
+            raise HTTPException(
+                status.HTTP_503_SERVICE_UNAVAILABLE, "Telegram is not set up."
+            )
+        code = new_link_code()
+        expires_at = await store.create_link_code(
+            pool_of(request), account.id, hash_link_code(code), LINK_CODE_MINUTES
+        )
+        return LinkCodeOut(
+            link=f"https://t.me/{cfg.telegram_bot_username}?start={code}",
+            expires_at=expires_at,
+        )
+
+    @app.delete("/me/telegram", status_code=status.HTTP_204_NO_CONTENT)
+    async def telegram_disconnect(request: Request, account: Signed) -> None:
+        """Disconnect the user's account from Telegram."""
+        await store.unlink_account(pool_of(request), account.id)
+
+    bot = APIRouter(prefix="/telegram", dependencies=[Depends(require_bot)])
+
+    @bot.post("/connect")
+    async def bot_connect(request: Request, body: ConnectRequest) -> ConnectedOut:
+        """Connect a Telegram user with the code from their connect link."""
+        account = await store.use_link_code(
+            pool_of(request),
+            hash_link_code(body.code),
+            body.telegram_user_id,
+            body.telegram_username,
+        )
+        if account is None:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST, "This link is invalid or has expired."
+            )
+        return ConnectedOut(name=account.full_name)
+
+    @bot.post("/disconnect", status_code=status.HTTP_204_NO_CONTENT)
+    async def bot_disconnect(request: Request, body: TelegramUser) -> None:
+        """Disconnect a Telegram user, at their own request."""
+        await store.unlink_telegram_user(pool_of(request), body.telegram_user_id)
+
+    @bot.post("/new", status_code=status.HTTP_204_NO_CONTENT)
+    async def bot_new_session(request: Request, body: TelegramUser) -> None:
+        """Make the user's next Telegram message start a new session."""
+        account = await connected_account(request, body.telegram_user_id)
+        await store.set_telegram_thread(pool_of(request), account.id, None)
+
+    @bot.post("/messages")
+    async def bot_chat(
+        request: Request, body: TelegramChatRequest
+    ) -> StreamingResponse:
+        """Answer a Telegram message as the connected account, like the web chat.
+
+        A Telegram user who is not connected gets 403 and the agent never runs.
+        """
+        account = await connected_account(request, body.telegram_user_id)
+        pool = pool_of(request)
+        thread_id = await store.telegram_thread(pool, account.id)
+        if thread_id is None:
+            thread = await store.create_thread(pool, account.id)
+            assert thread is not None  # a fresh random id is never taken
+            thread_id = thread.id
+            await store.set_telegram_thread(pool, account.id, thread_id)
+        await store.title_thread(pool, thread_id, _title(body.content))
+        events = _answer(
+            request.app.state.graph,
+            pool,
+            account,
+            thread_id,
+            body.content,
+            channel="telegram",
+        )
+        return _stream(events)
+
+    app.include_router(bot)
     return app
+
+
+def _stream(events: AsyncIterator[str]) -> StreamingResponse:
+    return StreamingResponse(
+        events, media_type="text/event-stream", headers={"Cache-Control": "no-cache"}
+    )
 
 
 async def _answer(
@@ -295,6 +457,7 @@ async def _answer(
     account: store.Account,
     thread_id: uuid.UUID,
     content: str,
+    channel: store.Channel = "web",
 ) -> AsyncIterator[str]:
     """Run the graph for one message and yield the answer as server-sent events."""
     started = time.monotonic()
@@ -307,6 +470,7 @@ async def _answer(
             "role": account.role,
             "account_id": account.id,
             "thread_id": str(thread_id),
+            "channel": channel,
         },
     }
     route: str | None = None
@@ -355,6 +519,7 @@ async def _answer(
                 sum(t.get("input_tokens", 0) for t in tokens),
                 sum(t.get("output_tokens", 0) for t in tokens),
                 int((time.monotonic() - started) * 1000),
+                channel,
             )
         except Exception:
             log.exception("Could not record usage for thread %s", thread_id)

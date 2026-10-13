@@ -4,12 +4,9 @@ The models are fakes, so these tests make no API calls; the database is a
 throwaway Postgres database.
 """
 
-import json
 import uuid
-from collections.abc import Iterator
 from typing import Any
 
-import psycopg
 import pytest
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, ToolMessage
@@ -17,76 +14,8 @@ from langchain_core.messages import AIMessage, ToolMessage
 from agent.triage import CLINICAL_RESPONSE
 from backend.security import create_token
 
-from .fakes import ANNE, ANSWER, PETER, SECRET, FakeModel, answering, app_with_fakes
-
-
-@pytest.fixture(scope="module")
-def api_db(make_database) -> str:
-    return make_database()
-
-
-@pytest.fixture
-def make_client(api_db: str, monkeypatch: pytest.MonkeyPatch) -> Iterator[Any]:
-    monkeypatch.setenv("DATABASE_URL", api_db)  # the agent's tools read from here
-    clients: list[TestClient] = []
-
-    def make(model: FakeModel | None = None) -> TestClient:
-        client = TestClient(app_with_fakes(api_db, model))
-        client.__enter__()
-        clients.append(client)
-        return client
-
-    yield make
-    for client in clients:
-        client.__exit__(None, None, None)
-
-
-@pytest.fixture
-def client(make_client: Any) -> TestClient:
-    return make_client()
-
-
-def sign_in(client: TestClient, email: str, password: str) -> dict[str, str]:
-    response = client.post("/auth/login", json={"email": email, "password": password})
-    assert response.status_code == 200, response.text
-    return {"Authorization": f"Bearer {response.json()['access_token']}"}
-
-
-def new_thread(client: TestClient, headers: dict[str, str]) -> str:
-    response = client.post("/threads", headers=headers)
-    assert response.status_code == 201
-    return str(response.json()["thread_id"])
-
-
-def chat(
-    client: TestClient, headers: dict[str, str], thread: str, text: str
-) -> list[tuple[str, dict[str, Any]]]:
-    response = client.post(
-        f"/threads/{thread}/messages", headers=headers, json={"content": text}
-    )
-    assert response.status_code == 200, response.text
-    assert response.headers["content-type"].startswith("text/event-stream")
-    events = []
-    for block in response.text.strip().split("\n\n"):
-        fields = dict(line.split(": ", 1) for line in block.splitlines())
-        events.append((fields["event"], json.loads(fields["data"])))
-    return events
-
-
-def answer_text(events: list[tuple[str, dict[str, Any]]]) -> str:
-    return "".join(data["text"] for event, data in events if event == "token")
-
-
-def usage_rows(db: str, email: str) -> int:
-    with psycopg.connect(db) as conn:
-        row = conn.execute(
-            "SELECT COUNT(*) FROM usage_events u JOIN accounts a ON a.id = u.account_id "
-            "WHERE a.email = %s",
-            (email,),
-        ).fetchone()
-        assert row is not None
-        return int(row[0])
-
+from .fakes import ANNE, ANSWER, PETER, SECRET, answering
+from .helpers import answer_text, chat, new_thread, sign_in, usage_rows
 
 # ---------- business flow (step 18) ----------
 

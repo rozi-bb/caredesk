@@ -1,7 +1,10 @@
-"""Password hashing and sign-in tokens (ADR-0022, ADR-0023)."""
+"""Password hashing, sign-in tokens, and Telegram connect codes (ADR-0022, ADR-0023, ADR-0027)."""
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+import secrets
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -9,6 +12,7 @@ from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 
 ALGORITHM = "HS256"
+LINK_CODE_MINUTES = 10
 
 _hasher = PasswordHasher()
 # Checked when an email is unknown, so a wrong email takes as long as a wrong
@@ -51,3 +55,24 @@ def read_token(token: str, secret: str) -> int | None:
         return int(claims["sub"])
     except (jwt.PyJWTError, ValueError):
         return None
+
+
+def new_link_code() -> str:
+    """Return a random one-time code for connecting Telegram.
+
+    It travels in a `t.me/<bot>?start=<code>` link, so it uses only the letters,
+    digits, `_` and `-` that Telegram allows there.
+    """
+    return secrets.token_urlsafe(16)
+
+
+def hash_link_code(code: str) -> str:
+    """Return the stored form of a connect code."""
+    # The code is long and random, so a fast hash is enough (unlike passwords),
+    # and the same code always gives the same hash, so it can be looked up.
+    return hashlib.sha256(code.encode()).hexdigest()
+
+
+def same_key(given: str | None, expected: str) -> bool:
+    """Compare a key in constant time, so timing does not reveal how much matched."""
+    return given is not None and hmac.compare_digest(given.encode(), expected.encode())

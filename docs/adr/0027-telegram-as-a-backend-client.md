@@ -9,7 +9,7 @@ Staff and family should be able to chat with CareDesk from Telegram as well as f
 
 ## Decision
 
-- **A separate bot process** (`src/telegram/`) calls the backend over HTTP, like the Chainlit UI. It never imports the agent, a model, or the database. Its `.env` holds only the backend address, the bot token from @BotFather, and the bot's backend key.
+- **A separate bot process** (`src/telegram_bot/`) calls the backend over HTTP, like the Chainlit UI. It never imports the agent, a model, or the database. Its `.env` holds only the backend address, the bot token from @BotFather, and the bot's backend key.
 - **Polling, not a webhook.** The bot fetches new messages from Telegram itself, so it runs on the local machine without a public address.
 - **Linking with a one-time code.** A signed-in user presses "Connect Telegram" in Chainlit (or types `/telegram`). The backend makes a random code, valid for 10 minutes and usable once, and stores only its hash. Chainlit shows the bot link `t.me/<bot>?start=<code>` and the same link as a QR code. Opening it sends the code to the bot, which passes it to the backend with the sender's Telegram user id. The backend links that Telegram user to the account and deletes the code. One Telegram user links to one account, and one account to one Telegram user; linking again replaces the old link. Chainlit shows the linked Telegram username, so a user who shared the link by mistake can see it and disconnect.
 - **Identity comes from the link.** The bot calls the backend with its own key and the sender's Telegram user id, which Telegram supplies and the user cannot change. The backend finds the linked account and runs the agent with that account's `user_id` and `role`. Nothing in the message text can change who the user is.

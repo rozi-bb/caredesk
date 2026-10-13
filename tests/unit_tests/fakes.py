@@ -14,6 +14,8 @@ from backend.config import Settings
 from backend.main import create_app
 
 SECRET = "s" * 40
+BOT_KEY = "b" * 40
+BOT_USERNAME = "caredesk_test_bot"
 PETER = "peter.bennett@example.org"  # family, son of Harold Bennett
 ANNE = "anne.bennett@example.org"  # family, daughter of Harold Bennett
 ANSWER = "Harold has lunch at noon today."
@@ -39,9 +41,17 @@ def by_keyword(messages: list[BaseMessage]) -> TriageResult:
     return TriageResult(category=category, reason="test")  # type: ignore[arg-type]
 
 
-def app_with_fakes(database_url: str, model: FakeModel | None = None) -> FastAPI:
-    """The real backend, with fake models and a test signing secret."""
-    settings = Settings(database_url=database_url, auth_secret=SECRET, token_minutes=5)
+def app_with_fakes(
+    database_url: str, model: FakeModel | None = None, telegram: bool = True
+) -> FastAPI:
+    """The real backend, with fake models and test secrets."""
+    settings = Settings(
+        database_url=database_url,
+        auth_secret=SECRET,
+        token_minutes=5,
+        telegram_bot_username=BOT_USERNAME if telegram else None,
+        telegram_bot_key=BOT_KEY if telegram else None,
+    )
     return create_app(
         lambda cp: build_graph(model or answering(), RunnableLambda(by_keyword), cp),
         settings,

@@ -92,6 +92,12 @@ In the app, identity comes from sign-in ([ADR-0022](adr/0022-accounts-created-by
 2. Every request sends the token. The backend checks it and loads the account from the database.
 3. The account's staff or family record becomes `Context(user_id, role)` for the run. The request body cannot change it.
 
+From Telegram, identity comes from a connection made once ([ADR-0027](adr/0027-telegram-as-a-backend-client.md)):
+
+1. A signed-in user asks for a connect link. The backend stores the hash of a random one-time code (10 minutes) for that account.
+2. Opening the link sends the code to the bot, which passes it on with the sender's Telegram user id. The backend uses the code up and stores "this Telegram user = this account".
+3. From then on the bot calls the backend with its own key and the sender's Telegram user id, which Telegram fills in and the user cannot change. The backend loads the linked account, and step 3 above applies.
+
 In Studio, `user_id` and `role` are still typed in by hand.
 
 ## 4. Tools
@@ -110,7 +116,7 @@ All tools are read-only.
 
 ## 5. Backend API
 
-Code: `src/backend/` (`main.py` routes, `store.py` queries, `security.py` passwords and tokens, `config.py` settings).
+Code: `src/backend/` (`main.py` routes, `store.py` queries, `security.py` passwords, tokens, and connect codes, `config.py` settings).
 
 | Endpoint | Does |
 |---|---|
@@ -121,14 +127,27 @@ Code: `src/backend/` (`main.py` routes, `store.py` queries, `security.py` passwo
 | `DELETE /threads/{id}` | Delete one of your conversations and its messages; usage rows are kept |
 | `GET /threads/{id}/messages` | History of one of your conversations |
 | `POST /threads/{id}/messages` | Ask a question; the answer streams back |
+| `GET /me/telegram`, `DELETE /me/telegram` | Whether your account is connected to Telegram, and as whom; disconnect |
+| `POST /me/telegram/code` | A one-time `t.me` link that connects your Telegram account |
 
 Everything except `/health` and `/auth/login` needs a token. A thread that belongs to someone else gets the same 404 as one that does not exist.
+
+**Bot endpoints** (`/telegram/...`) are for the Telegram bot only and need its key in the `X-Bot-Key` header, never a user token. Without `TELEGRAM_BOT_USERNAME` and `TELEGRAM_BOT_KEY` set, they do not exist (404).
+
+| Endpoint | Does |
+|---|---|
+| `POST /telegram/connect` | Code and Telegram user id in; connects them and uses the code up. A used, expired, or unknown code gets 400 |
+| `POST /telegram/messages` | A connected user's message; the answer streams back exactly as in the web chat |
+| `POST /telegram/new` | The next message starts a new session |
+| `POST /telegram/disconnect` | Disconnects the Telegram user |
+
+A Telegram user who is not connected gets 403 and the agent never runs. Telegram messages continue one session per account (`telegram_links.current_thread_id`), which is an ordinary thread, so it also shows in the web sidebar.
 
 **Chat endpoint.** Check the token, check the thread is yours, run the graph, stream the answer as server-sent events, record usage:
 
 - `token` events carry pieces of the answer. Only the `agent` node's model output is streamed; triage output stays internal. Fixed emergency and clinical replies are sent as one piece.
 - A final `done` event carries the triage route, or `error` if something failed.
-- One `usage_events` row per request: tokens (from LangChain's usage callback), time taken, route. Usage never blocks a request ([ADR-0009](adr/0009-no-hard-usage-limits.md)).
+- One `usage_events` row per request: tokens (from LangChain's usage callback), time taken, route, and channel (`web` or `telegram`). Usage never blocks a request ([ADR-0009](adr/0009-no-hard-usage-limits.md)).
 
 The graph is compiled with LangGraph's Postgres checkpointer, so conversations survive a restart. The checkpointer creates its own tables on startup.
 
@@ -175,7 +194,7 @@ The UI holds no model keys and has its own `.env` with only `BACKEND_URL` and `C
 
 ## 9. Observability
 
-Every run is traced in LangSmith (project `caredesk`) and tagged with `user_id` and `role`; runs from the backend also carry `account_id` and `thread_id`. Quality and cost can be split per user and role, and the same tokens are in `usage_events`.
+Every run is traced in LangSmith (project `caredesk`) and tagged with `user_id` and `role`; runs from the backend also carry `account_id`, `thread_id`, and `channel`. Quality and cost can be split per user and role, and the same tokens are in `usage_events`.
 
 ## 10. Evaluation
 

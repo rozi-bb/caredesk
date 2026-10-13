@@ -95,8 +95,8 @@ Staff and family can also chat with CareDesk from Telegram. Telegram is one more
 
 | # | Step | Status |
 |---|---|---|
-| T1 | Create the bot with @BotFather; the bot token and the bot's backend key live only in `.env` | ⬜ |
-| T2 | Backend: links and one-time codes tables, connect and disconnect endpoints, chat endpoint for the bot, channel in usage | ⬜ |
+| T1 | Create the bot with @BotFather; the bot token and the bot's backend key live only in `.env` | ✅ |
+| T2 | Backend: links and one-time codes tables, connect and disconnect endpoints, chat endpoint for the bot, channel in usage | ✅ |
 | T3 | Chainlit: Connect Telegram, the connected account's status, Disconnect | ⬜ |
 | T4 | Bot adapter: passes messages on, `/new`, `/disconnect`, private chats only, connect instructions and emergency contacts for unlinked users | ⬜ |
 | T5 | Fixed texts (greeting, emergency contacts) served by the backend, so Chainlit and the bot keep no copies of their own | ⬜ |
