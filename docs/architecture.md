@@ -4,13 +4,13 @@
 |---|---|
 | Status | Draft |
 | Release | 1 |
-| Last updated | 2026-10-03 |
+| Last updated | 2026-10-13 |
 
-What CareDesk does and for whom is in [prd.md](prd.md). This document covers how it is built. The reasons behind each choice are in [adr/](adr/).
+How CareDesk is built. What it does is in [prd.md](prd.md); why each choice was made is in [adr/](adr/).
 
 ## 1. Overview
 
-Release 1 is a single LangGraph graph served by the local Agent Server (`langgraph dev`). LangGraph Studio is the only interface. There is no backend API or end-user UI yet.
+Release 1 runs locally: one LangGraph graph on the Agent Server (`langgraph dev`), used through LangGraph Studio. There is no backend API or user app yet.
 
 ```mermaid
 flowchart LR
@@ -25,7 +25,7 @@ flowchart LR
 
 ## 2. Graph
 
-Every message enters through triage. Only normal questions reach the model loop.
+Every message goes through triage first. Only normal questions reach the model.
 
 ```mermaid
 flowchart TD
@@ -40,83 +40,97 @@ flowchart TD
     C --> END
 ```
 
-| Node | Job | Uses a model? |
-|---|---|---|
-| `triage` | Classify the latest message as `emergency`, `clinical`, or `normal`. Unmistakable emergencies are caught by a keyword check first ([ADR-0016](adr/0016-emergency-keyword-precheck.md)) | Only when the keyword check does not match: `deepseek-flash` in JSON mode, 15-second timeout |
-| `emergency_response` | Write an incident record, return fixed emergency instructions and contacts ([ADR-0017](adr/0017-emergency-records-never-block.md)) | No |
-| `decline_clinical` | Return a fixed decline that redirects to nursing staff | No |
-| `agent` | Answer normal questions, calling tools when needed | Yes |
-| `tools` | Run the tool the model chose | No |
+The graph is built in `build_graph()` in `src/agent/graph.py`.
 
-The emergency and clinical paths return fixed text. They do not depend on a model deciding to say the right thing.
+| Node | What it does | Model? | Code |
+|---|---|---|---|
+| `triage` | Labels the message `emergency`, `clinical`, or `normal` | Only if no keyword matches | `triage()`; `src/agent/triage.py` |
+| `emergency_response` | Records an incident and replies with fixed emergency steps | No | `emergency_response()`; `record_emergency()` |
+| `decline_clinical` | Replies with a fixed "please ask the nurse" message | No | `decline_clinical()` |
+| `agent` | Answers, or asks for tools | Yes | `agent()` |
+| `tools` | Runs the requested tools, then returns to `agent` | No | `ToolNode`; `src/agent/tools.py` |
 
-**Triage fails toward safety.** If the triage call errors or times out, the message goes down the emergency path and the failure is logged. Showing emergency contacts by mistake is cheap; missing an emergency is not. Because a broken classifier then looks like a very cautious one, an integration test calls the real classifier directly.
+### Triage
 
-State carries `route` and `incident_id` alongside the messages, so evaluations can see which path a message took.
+1. **Keyword check.** Obvious emergencies ("not breathing", "fire") go straight to the emergency path, with no model call ([ADR-0016](adr/0016-emergency-keyword-precheck.md)).
+2. **Classifier.** Otherwise `deepseek-flash` labels the message. It uses structured output, `with_structured_output(TriageResult, method="json_mode")`, so the reply comes back as a checked object instead of free text and the code reads `result.category` directly. JSON mode, because DeepSeek's thinking mode rejects the default method (a forced tool call).
+3. **Fail safe.** Any failure (15-second timeout, bad JSON, unknown label) is treated as an emergency and logged. A false alarm is cheap; a missed emergency is not. An integration test calls the real classifier, so a broken one cannot hide behind this.
+
+### Fixed replies
+
+Emergency and clinical replies are fixed text, not model output, so they cannot go wrong. If the incident cannot be written, the emergency reply is still sent ([ADR-0017](adr/0017-emergency-records-never-block.md)).
+
+### State
+
+| Field | Meaning |
+|---|---|
+| `messages` | The conversation |
+| `route` | Triage result for the latest message |
+| `incident_id` | The incident written for an emergency; empty otherwise |
+
+Callers can only send `messages`. The graph sets `route` and `incident_id`, so nobody can skip triage.
+
+### Example
+
+Staff asks "What's on Mary Johnson's schedule today?":
+
+1. `triage`: no keyword, classifier says `normal`
+2. `agent`: calls `get_schedule(resident="Mary Johnson", day="today")`
+3. `tools`: checks permission, returns today's entries
+4. `agent`: writes the answer
 
 ## 3. Identity
 
-Each run carries the caller's identity in the graph's runtime context:
-
-| Field | Values |
-|---|---|
-| `user_id` | ID of a staff member or family member in the operational DB |
-| `role` | `staff` or `family` |
-
-In release 1 these are typed into Studio by hand. Tools read them from the runtime context, never from the conversation, so a user cannot change who they are by saying so.
+Each run carries the caller's `user_id` and `role` (`staff` or `family`) in the runtime context. For now they are typed into Studio. Tools read identity from there, never from the chat, so a user cannot change who they are by saying so.
 
 ## 4. Tools
 
-Two kinds of tools, both read-only:
+All tools are read-only.
 
-| Kind | Examples | Source |
-|---|---|---|
-| Operational | `get_my_profile`, `get_resident`, `get_schedule`, `get_activities`, `get_visits`, `get_incidents` (staff only), `get_billing` | Operational DB, opened read-only |
-| Rules | `search_rules`: top 5 passages above a similarity threshold, each labelled with its source | Rules index |
+| Tool | Reads from |
+|---|---|
+| `get_my_profile`, `get_resident`, `get_schedule`, `get_activities`, `get_visits`, `get_incidents` (staff only), `get_billing` | Operational DB |
+| `search_rules` | Rules index: top 5 passages scoring 0.6 or more, each with its source label |
 
-Every operational tool applies the caller's permissions (prd.md section 3) inside its own query, before any row is returned (`agent/records.py`). Identity reaches the tools through LangGraph's injected `ToolRuntime`, which is not part of the tool schema, so the model cannot supply it. The model only chooses which tool to call and with which parameters. It never writes a query.
+- Every query applies the caller's permissions before returning rows (`src/agent/records.py`).
+- Identity reaches tools through the injected `ToolRuntime`, which the model cannot see or fill in.
+- The model only picks a tool and its parameters. It never writes SQL.
 
-Rules search returns passages with their source (F-tag number or handbook section) so the answer can cite them.
-
-## 5. Data stores
+## 5. Data
 
 | Store | Holds | Written by |
 |---|---|---|
-| Operational DB (SQLite file) | Residents, family links and access levels, staff, schedules, activities, visits, incidents, billing | A seed script with a fixed seed. At runtime, only `emergency_response` writes, and only to incidents. |
-| Rules index (`data/rules_index.json`) | 204 passages from `corpus/` (14 F-tags and the handbook), embedded locally | `scripts/build_rules_index.py` |
-| Conversation state | Messages per thread | The Agent Server. No custom checkpointer is configured. |
+| Operational DB (SQLite) | Residents, family links, staff, schedules, activities, visits, incidents, billing | Seed script with a fixed seed; at runtime, only emergency incidents |
+| Rules index (`data/rules_index.json`) | 204 passages from 14 F-tags and the handbook, embedded locally | `scripts/build_rules_index.py` |
+| Conversation state | Messages per thread | The Agent Server |
 
-"Today" inside the data is fixed at 2026-10-05 (`REFERENCE_DATE` in `src/agent/db`). Tools use it instead of the real date, so answers about "today" and evaluation results do not drift from day to day.
+"Today" is fixed at 2026-10-05 (`REFERENCE_DATE` in `src/agent/db`), so answers and evaluations do not change from day to day.
 
 ## 6. Models
 
 | Use | Model |
 |---|---|
 | Triage | `deepseek-flash` |
-| Agent answers | `deepseek-flash` by default; `deepseek-v4-pro` if evaluation shows flash is not good enough |
+| Answers | `deepseek-flash`; `deepseek-v4-pro` if evaluation shows it is needed |
 | Embeddings | `BAAI/bge-small-en-v1.5`, local through fastembed ([ADR-0015](adr/0015-local-embeddings-in-memory-index.md)) |
 | Evaluation judge | Not decided (section 9) |
 
 ## 7. Observability
 
-LangSmith tracing is on for every run (project `caredesk`). Each trace carries `user_id` and `role` as metadata, so quality and cost can be broken down per user and per role.
+Every run is traced in LangSmith (project `caredesk`) and tagged with `user_id` and `role`, so quality and cost can be split per user and role.
 
 ## 8. Evaluation
 
-Evaluation runs in LangSmith against the four categories in prd.md section 8, with code-based checks ([ADR-0014](adr/0014-code-based-evaluators.md)). Datasets live in `evals/suites.py`, are versioned by name, and grow from failures found by reading real outputs. Each run seeds a throwaway database, so evaluations never change `data/caredesk.db`.
-
-Test layers:
+Evaluations run in LangSmith against the four categories in prd.md section 8, using code-based checks ([ADR-0014](adr/0014-code-based-evaluators.md)). Datasets are in `evals/suites.py`, versioned by name. Each run uses a fresh copy of the database.
 
 | Layer | Checks | Calls an API? |
 |---|---|---|
-| Unit tests | Tool permission filters, routing logic | No |
-| Integration tests | The graph end to end with a real model | Yes |
-| Evaluations | Answer quality, citations, safety, access control | Yes |
+| Unit tests | Permission filters, routing | No |
+| Integration tests | The whole graph with a real model | Yes |
+| Evaluations | Answers, citations, safety, access control | Yes |
 
 ## 9. Open decisions
 
-| Decision | Options | Needed by |
+| Decision | Constraint | Needed by |
 |---|---|---|
 | Evaluation judge | Must be a different provider from the answering model | First LLM-as-judge evaluation |
-
-Each becomes an ADR once decided.
