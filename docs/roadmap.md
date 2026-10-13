@@ -28,7 +28,7 @@ Legend: ✅ done · 🔄 in progress · ⬜ not started
 
 ### Features (one at a time, each evaluated before the next)
 
-Each feature is one loop of build (step 9) → evaluate (step 16). If the evaluation fails, fix before moving on. Each loop ends with a short note in `docs/iterations/` and an ADR for every decision made along the way.
+Each feature is one loop of build (step 9) → evaluate (step 17). If the evaluation fails, fix before moving on. Each loop ends with a short note in `docs/iterations/` and an ADR for every decision made along the way.
 
 | # | Feature | PRD | Done when | Status |
 |---|---|---|---|---|
@@ -48,15 +48,36 @@ Decisions made along the way: embeddings and vector store in 9.3 (ADR-0015), eme
 | Update README with a short demo | ✅ |
 | Tag `v0.1.0` | ✅ [note](iterations/release-1.md) |
 
-## After release 1
+## Release 2 — thin version, end to end
 
-Not ordered yet. The order is decided when release 1 ships, based on what monitoring shows.
+Playbook stage 2: a thin version that runs end to end and is used by a few people. Scope is confirmed in prd.md before work starts.
 
-- Backend API and Postgres (playbook steps 10–11)
-- Login (step 12)
-- End-user UI, Chainlit as the candidate (step 15)
+| # | Step | Status |
+|---|---|---|
+| 10 | Backend skeleton: server with a health check, calls the agent, reads config and secrets from the environment | ⬜ |
+| 11 | Postgres: users, usage history (one row per event), conversation memory; schema changes as migration files | ⬜ |
+| 12 | Login: every request carries the user, and users can open only their own threads | ⬜ |
+| 13 | Chat endpoint: check login, call the agent, record usage, stream the answer | ⬜ |
+| 16 | End-user UI, Chainlit as the candidate | ⬜ |
+| 18 | Business-flow tests: sign-up and login | ⬜ |
+| 19 | Security tests: thread isolation, no API key in the frontend, no endpoint without login, rate limiting, prompt injection | ⬜ |
+| 20 | VPS, domain, HTTPS; Docker Compose behind Nginx | ⬜ |
+| 21 | Separate production keys and environment | ⬜ |
+| 22 | Scheduled database backups, with a tested restore | ⬜ |
+| 23 | Release procedure: tag, backup, deploy, migrate, smoke check, rollback plan | ⬜ |
+| 24 | Quality monitoring: traces, Insights, user feedback | ⬜ |
+| 25 | Cost per user from trace metadata | ⬜ |
+| 26 | Error and uptime monitoring; spending alert at the model provider | ⬜ |
+
+Open before step 19: rate limiting must not block an emergency message ([ADR-0009](adr/0009-no-hard-usage-limits.md)).
+
+Not planned: packages and usage limits (step 14) and payments (step 15). CareDesk serves one home that pays per use, and a hard limit could block an emergency ([ADR-0009](adr/0009-no-hard-usage-limits.md)).
+
+## Later
+
+Not ordered yet. The order is decided after release 2, based on what monitoring and users show.
+
 - Resident access
 - Write actions with human confirmation, and data entry forms
-- Per-user cost monitoring and spending alerts (steps 24–25)
-- Business-flow and security tests (steps 17–18)
-- Deployment to a VPS with backups (steps 19–22)
+- LLM-as-judge and human review in evaluation (step 17); the judge must come from another provider ([ADR-0010](adr/0010-judge-from-a-different-provider.md))
+- More evaluation cases from the playbook checklist: out-of-scope questions, prompt injection, system-prompt leaks, answer relevance
