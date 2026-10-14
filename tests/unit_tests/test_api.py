@@ -24,6 +24,17 @@ def test_health(client: TestClient) -> None:
     assert client.get("/health").json() == {"status": "ok"}
 
 
+def test_every_endpoint_is_in_one_documented_group(client: TestClient) -> None:
+    spec = client.get("/openapi.json").json()
+    groups = {tag["name"] for tag in spec["tags"]}
+    for path, operations in spec["paths"].items():
+        for method, operation in operations.items():
+            where = f"{method.upper()} {path}"
+            assert len(operation.get("tags", [])) == 1, where
+            assert operation["tags"][0] in groups, where
+            assert operation.get("summary"), where
+
+
 def test_fixed_texts_are_public_and_share_the_agents_contacts(
     client: TestClient,
 ) -> None:

@@ -12,6 +12,7 @@ Telegram account is connected to (ADR-0027).
 
 from __future__ import annotations
 
+import importlib.metadata
 import json
 import logging
 import time
@@ -58,6 +59,30 @@ FIXED_REPLY_NODES = ("emergency_response", "decline_clinical")
 ERROR_REPLY = "Something went wrong on our side. Please try again."
 # Shown by every client, so the wording lives here once (ADR-0027).
 TOPICS = "Ask me about schedules, activities, visits, billing, or the home's rules."
+
+API_DESCRIPTION = (
+    "Backend for CareDesk. The Chainlit UI and the Telegram bot are its only "
+    "clients. Sign in with `POST /auth/login`, then press **Authorize** and "
+    "paste the token."
+)
+# The order here is the order of the groups in the API docs.
+API_TAGS = [
+    {"name": "System", "description": "Health check and the fixed texts. Public."},
+    {"name": "Auth", "description": "Sign in and see who is signed in."},
+    {
+        "name": "Conversations",
+        "description": "The signed-in user's own conversations, and the chat itself.",
+    },
+    {
+        "name": "Telegram connection",
+        "description": "Connect or disconnect the signed-in user's Telegram account.",
+    },
+    {
+        "name": "Telegram bot",
+        "description": "Internal: called only by the Telegram bot, with its "
+        "`X-Bot-Key`. Absent (404) unless Telegram is set up.",
+    },
+]
 
 
 class Texts(BaseModel):
@@ -263,9 +288,15 @@ def create_app(
             app.state.graph = (graph_factory or _default_graph)(checkpointer)
             yield
 
-    app = FastAPI(title="CareDesk API", lifespan=lifespan)
+    app = FastAPI(
+        title="CareDesk API",
+        description=API_DESCRIPTION,
+        version=importlib.metadata.version("caredesk"),
+        openapi_tags=API_TAGS,
+        lifespan=lifespan,
+    )
 
-    @app.get("/health")
+    @app.get("/health", tags=["System"], summary="Health check")
     async def health(request: Request) -> dict[str, str]:
         """Report whether the server and its database are up."""
         try:
@@ -277,7 +308,7 @@ def create_app(
             ) from error
         return {"status": "ok"}
 
-    @app.get("/texts")
+    @app.get("/texts", tags=["System"], summary="Fixed texts")
     async def texts() -> Texts:
         """Return the fixed texts.
 
@@ -286,7 +317,7 @@ def create_app(
         """
         return Texts(topics=TOPICS, emergency_notice=EMERGENCY_NOTICE)
 
-    @app.post("/auth/login")
+    @app.post("/auth/login", tags=["Auth"], summary="Sign in")
     async def login(request: Request, body: LoginRequest) -> TokenResponse:
         """Exchange email and password for a sign-in token."""
         cfg: Settings = request.app.state.settings
@@ -303,12 +334,17 @@ def create_app(
         token = create_token(account.id, cfg.auth_secret, cfg.token_minutes)
         return TokenResponse(access_token=token, expires_in=cfg.token_minutes * 60)
 
-    @app.get("/me")
+    @app.get("/me", tags=["Auth"], summary="Who is signed in")
     async def me(account: Signed) -> Profile:
         """Return the signed-in user."""
         return Profile(email=account.email, role=account.role, name=account.full_name)
 
-    @app.post("/threads", status_code=status.HTTP_201_CREATED)
+    @app.post(
+        "/threads",
+        status_code=status.HTTP_201_CREATED,
+        tags=["Conversations"],
+        summary="Start a conversation",
+    )
     async def new_thread(
         request: Request, account: Signed, body: NewThreadRequest | None = None
     ) -> ThreadOut:
@@ -324,7 +360,7 @@ def create_app(
             thread_id=thread.id, created_at=thread.created_at, title=thread.title
         )
 
-    @app.get("/threads")
+    @app.get("/threads", tags=["Conversations"], summary="List my conversations")
     async def threads(request: Request, account: Signed) -> list[ThreadOut]:
         """List the signed-in user's own conversations."""
         rows = await store.list_threads(pool_of(request), account.id)
@@ -333,7 +369,12 @@ def create_app(
             for t in rows
         ]
 
-    @app.delete("/threads/{thread_id}", status_code=status.HTTP_204_NO_CONTENT)
+    @app.delete(
+        "/threads/{thread_id}",
+        status_code=status.HTTP_204_NO_CONTENT,
+        tags=["Conversations"],
+        summary="Delete a conversation",
+    )
     async def delete(request: Request, account: Signed, thread_id: uuid.UUID) -> None:
         """Delete one of the user's conversations, including its messages."""
         await require_thread(request, account, thread_id)
@@ -341,7 +382,11 @@ def create_app(
         await checkpointer.adelete_thread(str(thread_id))
         await store.delete_thread(pool_of(request), account.id, thread_id)
 
-    @app.get("/threads/{thread_id}/messages")
+    @app.get(
+        "/threads/{thread_id}/messages",
+        tags=["Conversations"],
+        summary="Conversation history",
+    )
     async def history(
         request: Request, account: Signed, thread_id: uuid.UUID
     ) -> list[MessageOut]:
@@ -357,7 +402,11 @@ def create_app(
                 out.append(MessageOut(role="assistant", content=m.text))
         return out
 
-    @app.post("/threads/{thread_id}/messages")
+    @app.post(
+        "/threads/{thread_id}/messages",
+        tags=["Conversations"],
+        summary="Ask a question (streams)",
+    )
     async def chat(
         request: Request, account: Signed, thread_id: uuid.UUID, body: ChatRequest
     ) -> StreamingResponse:
@@ -374,7 +423,7 @@ def create_app(
         )
         return _stream(events)
 
-    @app.get("/me/telegram")
+    @app.get("/me/telegram", tags=["Telegram connection"], summary="Connection status")
     async def telegram_status(request: Request, account: Signed) -> TelegramStatus:
         """Say whether the user's account is connected to Telegram."""
         cfg: Settings = request.app.state.settings
@@ -388,7 +437,12 @@ def create_app(
             linked_at=link.linked_at,
         )
 
-    @app.post("/me/telegram/code", status_code=status.HTTP_201_CREATED)
+    @app.post(
+        "/me/telegram/code",
+        status_code=status.HTTP_201_CREATED,
+        tags=["Telegram connection"],
+        summary="Get a connect link",
+    )
     async def telegram_code(request: Request, account: Signed) -> LinkCodeOut:
         """Make a one-time link that connects the user's Telegram account."""
         cfg: Settings = request.app.state.settings
@@ -405,14 +459,23 @@ def create_app(
             expires_at=expires_at,
         )
 
-    @app.delete("/me/telegram", status_code=status.HTTP_204_NO_CONTENT)
+    @app.delete(
+        "/me/telegram",
+        status_code=status.HTTP_204_NO_CONTENT,
+        tags=["Telegram connection"],
+        summary="Disconnect Telegram",
+    )
     async def telegram_disconnect(request: Request, account: Signed) -> None:
         """Disconnect the user's account from Telegram."""
         await store.unlink_account(pool_of(request), account.id)
 
-    bot = APIRouter(prefix="/telegram", dependencies=[Depends(require_bot)])
+    bot = APIRouter(
+        prefix="/telegram",
+        tags=["Telegram bot"],
+        dependencies=[Depends(require_bot)],
+    )
 
-    @bot.post("/connect")
+    @bot.post("/connect", summary="Connect with a code")
     async def bot_connect(request: Request, body: ConnectRequest) -> ConnectedOut:
         """Connect a Telegram user with the code from their connect link."""
         account = await store.use_link_code(
@@ -427,24 +490,30 @@ def create_app(
             )
         return ConnectedOut(name=account.full_name)
 
-    @bot.post("/me")
+    @bot.post("/me", summary="Who this Telegram user is")
     async def bot_whoami(request: Request, body: TelegramUser) -> ConnectedOut:
         """Say who a Telegram user is connected as; 403 if not connected."""
         account = await connected_account(request, body.telegram_user_id)
         return ConnectedOut(name=account.full_name)
 
-    @bot.post("/disconnect", status_code=status.HTTP_204_NO_CONTENT)
+    @bot.post(
+        "/disconnect",
+        status_code=status.HTTP_204_NO_CONTENT,
+        summary="Disconnect this Telegram user",
+    )
     async def bot_disconnect(request: Request, body: TelegramUser) -> None:
         """Disconnect a Telegram user, at their own request."""
         await store.unlink_telegram_user(pool_of(request), body.telegram_user_id)
 
-    @bot.post("/new", status_code=status.HTTP_204_NO_CONTENT)
+    @bot.post(
+        "/new", status_code=status.HTTP_204_NO_CONTENT, summary="Start a new session"
+    )
     async def bot_new_session(request: Request, body: TelegramUser) -> None:
         """Make the user's next Telegram message start a new session."""
         account = await connected_account(request, body.telegram_user_id)
         await store.set_telegram_thread(pool_of(request), account.id, None)
 
-    @bot.post("/messages")
+    @bot.post("/messages", summary="Answer a message (streams)")
     async def bot_chat(
         request: Request, body: TelegramChatRequest
     ) -> StreamingResponse:
