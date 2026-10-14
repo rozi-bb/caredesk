@@ -4,25 +4,60 @@
 |---|---|
 | Status | Draft |
 | Release | 2 (backend and chat UI) |
-| Last updated | 2026-10-13 |
+| Last updated | 2026-10-14 |
 
 How CareDesk is built. What it does is in [prd.md](prd.md); why each choice was made is in [adr/](adr/).
 
 ## 1. Overview
 
-Everything runs locally. Users chat in a Chainlit UI, which only calls our backend ([ADR-0024](adr/0024-chainlit-ui-as-backend-client.md)). The backend (FastAPI) signs users in and runs the graph ([ADR-0020](adr/0020-own-backend-not-agent-server.md)). One Postgres database in Docker holds all app data ([ADR-0021](adr/0021-one-postgres-database.md)).
+Everything runs locally except three outside services: DeepSeek (the model), the Telegram servers, and LangSmith (tracing).
+
+There are two entry points: the Chainlit chat UI in a browser, and the Telegram bot. Both are only clients: they hold no logic or data of their own and just call the backend ([ADR-0024](adr/0024-chainlit-ui-as-backend-client.md), [ADR-0027](adr/0027-telegram-as-a-backend-client.md)). The backend (FastAPI) checks who the user is, then runs the CareDesk graph inside its own process ([ADR-0020](adr/0020-own-backend-not-agent-server.md)). All data lives in one Postgres database in Docker ([ADR-0021](adr/0021-one-postgres-database.md)).
 
 ```mermaid
 flowchart LR
-    U["Browser"] --> C["Chat UI<br/>Chainlit, port 8001"]
-    C -->|"Bearer token"| B["Backend<br/>FastAPI, port 8000"]
-    B --> G["CareDesk graph"]
-    G --> M["DeepSeek"]
-    G --> V[("Rules index<br/>F-tags + handbook")]
-    B --> PG[("Postgres<br/>records, accounts,<br/>threads, usage, checkpoints")]
+    subgraph user["User"]
+        W["Browser"]
+        TG["Telegram app"]
+    end
+
+    subgraph local["Local machine"]
+        C["Chat UI<br/>Chainlit, port 8001"]
+        BOT["Telegram bot"]
+        subgraph be["Backend · FastAPI, port 8000"]
+            API["API<br/>sign-in, conversations, chat"]
+            G["CareDesk graph"]
+        end
+        PG[("Postgres<br/>care home data, accounts,<br/>conversations, usage")]
+        IDX[("Rules index<br/>F-tags + handbook")]
+    end
+
+    subgraph ext["Outside services"]
+        TS["Telegram servers"]
+        DS["DeepSeek"]
+        LS["LangSmith"]
+    end
+
+    W --> C
+    TG --> TS
+    BOT -->|"fetch new messages"| TS
+    C -->|"sign-in token"| API
+    BOT -->|"bot key +<br/>Telegram id"| API
+    API --> G
+    API --> PG
     G --> PG
-    G -. traces .-> L["LangSmith"]
+    G --> IDX
+    G --> DS
+    G -.->|"trace"| LS
 ```
+
+How to read it:
+
+1. The user chats in a browser (Chainlit) or in Telegram. The bot fetches messages from the Telegram servers itself, so it needs no public address.
+2. The client forwards the message to the backend API with proof of identity: the sign-in token from Chainlit, or the bot key plus the sender's Telegram id from the bot.
+3. The API looks up the account in Postgres, then runs the graph with that account's identity.
+4. The graph reads care home data from Postgres and rules from the index, then calls DeepSeek to write the answer. Conversation history is also stored in Postgres.
+5. The answer is streamed back to the client piece by piece. Every run is traced in LangSmith.
 
 For development, the same graph still runs in Studio through `langgraph dev`, with identity typed in by hand.
 
