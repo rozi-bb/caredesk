@@ -29,6 +29,10 @@ class ThreadIdTaken(Exception):
     """The chosen conversation id is already in use."""
 
 
+class TelegramUnavailable(Exception):
+    """The backend has no Telegram bot set up."""
+
+
 @dataclass(frozen=True)
 class Profile:
     """The signed-in user."""
@@ -45,6 +49,23 @@ class Thread:
     id: str
     title: str | None
     created_at: str
+
+
+@dataclass(frozen=True)
+class TelegramStatus:
+    """Whether Telegram can be used, and whether the user's account is connected."""
+
+    available: bool
+    connected: bool
+    username: str | None = None
+
+
+@dataclass(frozen=True)
+class ConnectLink:
+    """A one-time link that connects the user's Telegram account."""
+
+    link: str
+    expires_at: str
 
 
 class BackendClient:
@@ -133,6 +154,33 @@ class BackendClient:
             )
         self._check(response)
         return [(m["role"], m["content"]) for m in response.json()]
+
+    async def telegram_status(self, token: str) -> TelegramStatus:
+        """Return whether the user's account is connected to Telegram."""
+        async with self._http() as http:
+            response = await http.get("/me/telegram", headers=self._auth(token))
+        self._check(response)
+        data = response.json()
+        return TelegramStatus(
+            available=data["available"],
+            connected=data["connected"],
+            username=data["username"],
+        )
+
+    async def telegram_link(self, token: str) -> ConnectLink:
+        """Return a new one-time link that connects the user's Telegram account."""
+        async with self._http() as http:
+            response = await http.post("/me/telegram/code", headers=self._auth(token))
+        if response.status_code == 503:
+            raise TelegramUnavailable
+        self._check(response)
+        return ConnectLink(**response.json())
+
+    async def disconnect_telegram(self, token: str) -> None:
+        """Disconnect the user's account from Telegram."""
+        async with self._http() as http:
+            response = await http.delete("/me/telegram", headers=self._auth(token))
+        self._check(response)
 
     async def ask(
         self, token: str, thread_id: str, content: str

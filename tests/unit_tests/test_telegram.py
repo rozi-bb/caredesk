@@ -87,6 +87,7 @@ def no_links(api_db: str) -> None:
 def test_connecting_from_the_link(client: TestClient, test_password: str) -> None:
     peter = sign_in(client, PETER, test_password)
     assert status_of(client, peter) == {
+        "available": True,
         "connected": False,
         "username": None,
         "linked_at": None,
@@ -308,6 +309,7 @@ def test_without_bot_settings_the_channel_is_off(
 ) -> None:
     client = make_client(telegram=False)
     peter = sign_in(client, PETER, test_password)
+    assert status_of(client, peter)["available"] is False
     assert client.post("/me/telegram/code", headers=peter).status_code == 503
     for path in ("/telegram/connect", "/telegram/messages"):
         response = client.post(path, headers=BOT, json={"telegram_user_id": PETER_TG})

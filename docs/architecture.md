@@ -155,7 +155,7 @@ Run it with `uv run uvicorn backend.main:app --env-file .env`.
 
 ## 6. Chat UI
 
-Code: `src/ui/` (`app.py` Chainlit handlers, `client.py` backend client, `data_layer.py` sidebar history). Run from that folder: `cd src/ui && uv run chainlit run app.py --port 8001`.
+Code: `src/ui/` (`app.py` Chainlit handlers, `client.py` backend client, `data_layer.py` sidebar history, `telegram_link.py` Telegram texts and QR code). Run from that folder: `cd src/ui && uv run chainlit run app.py --port 8001`.
 
 | Moment | What happens |
 |---|---|
@@ -165,6 +165,7 @@ Code: `src/ui/` (`app.py` Chainlit handlers, `client.py` backend client, `data_l
 | Message | The backend thread is created on the first message, with Chainlit's thread id; the answer streams in |
 | Open a past conversation | Its messages are loaded from the backend and the chat continues in the same thread |
 | Delete | Through the backend, which checks ownership |
+| Connect Telegram | A button on the greeting, or the `/telegram` command, asks the backend for a one-time link and shows it with a QR code. "Check connection" shows who is connected, with a Disconnect button. These never reach the agent |
 
 The sidebar comes from a Chainlit data layer that stores nothing ([ADR-0025](adr/0025-sidebar-history-from-the-backend.md)). A thread's owner is known only once the backend has returned it with the owner's token; an unknown thread counts as not found, so Chainlit refuses to open it. The backend checks ownership again on every call.
 

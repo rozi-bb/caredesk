@@ -115,8 +115,9 @@ class LinkCodeOut(BaseModel):
 
 
 class TelegramStatus(BaseModel):
-    """Whether the user's account is connected to Telegram, and to which user."""
+    """Whether Telegram is set up, and whether the user's account is connected to it."""
 
+    available: bool
     connected: bool
     username: str | None = None
     linked_at: datetime | None = None
@@ -357,11 +358,15 @@ def create_app(
     @app.get("/me/telegram")
     async def telegram_status(request: Request, account: Signed) -> TelegramStatus:
         """Say whether the user's account is connected to Telegram."""
+        cfg: Settings = request.app.state.settings
         link = await store.get_telegram_link(pool_of(request), account.id)
         if link is None:
-            return TelegramStatus(connected=False)
+            return TelegramStatus(available=cfg.telegram_enabled, connected=False)
         return TelegramStatus(
-            connected=True, username=link.telegram_username, linked_at=link.linked_at
+            available=cfg.telegram_enabled,
+            connected=True,
+            username=link.telegram_username,
+            linked_at=link.linked_at,
         )
 
     @app.post("/me/telegram/code", status_code=status.HTTP_201_CREATED)

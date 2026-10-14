@@ -12,10 +12,18 @@ import pytest
 from chainlit.types import Pagination, ThreadFilter
 from chainlit.user import User
 
-from ui.client import BackendClient, ConversationNotFound, SignInRequired
+from ui import telegram_link as tg
+from ui.client import (
+    BackendClient,
+    ConnectLink,
+    ConversationNotFound,
+    SignInRequired,
+    TelegramStatus,
+    TelegramUnavailable,
+)
 from ui.data_layer import BackendDataLayer
 
-from .fakes import ANNE, ANSWER, PETER, app_with_fakes
+from .fakes import ANNE, ANSWER, BOT_KEY, PETER, app_with_fakes
 
 pytestmark = pytest.mark.anyio
 
@@ -169,6 +177,77 @@ async def test_the_backend_token_is_not_handed_back_to_chainlit(
     assert "token" not in persisted.metadata  # Chainlit returns this user to the page
     assert layer.token_for(PETER) == token
     assert await layer.get_user(PETER) is None
+
+
+# ---------- connecting Telegram (ADR-0027) ----------
+
+
+async def test_connect_check_and_disconnect_telegram(
+    make_database, monkeypatch: pytest.MonkeyPatch, test_password: str
+) -> None:
+    url = make_database()
+    monkeypatch.setenv("DATABASE_URL", url)
+    app = app_with_fakes(url)
+    transport = httpx.ASGITransport(app=app)
+    async with app.router.lifespan_context(app):
+        backend = BackendClient("http://backend", transport=transport)
+        token = await backend.login(PETER, test_password)
+        assert token
+        assert await backend.telegram_status(token) == TelegramStatus(
+            available=True, connected=False
+        )
+        link = await backend.telegram_link(token)
+        code = link.link.rsplit("start=", 1)[1]
+
+        # The bot's side, as the real bot will call it.
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://backend"
+        ) as bot:
+            response = await bot.post(
+                "/telegram/connect",
+                headers={"X-Bot-Key": BOT_KEY},
+                json={
+                    "code": code,
+                    "telegram_user_id": 77,
+                    "telegram_username": "pete",
+                },
+            )
+            assert response.status_code == 200
+
+        status = await backend.telegram_status(token)
+        assert (status.connected, status.username) == (True, "pete")
+        await backend.disconnect_telegram(token)
+        assert (await backend.telegram_status(token)).connected is False
+
+
+async def test_telegram_not_set_up_is_reported(
+    make_database, monkeypatch: pytest.MonkeyPatch, test_password: str
+) -> None:
+    url = make_database()
+    monkeypatch.setenv("DATABASE_URL", url)
+    app = app_with_fakes(url, telegram=False)
+    async with app.router.lifespan_context(app):
+        backend = BackendClient(
+            "http://backend", transport=httpx.ASGITransport(app=app)
+        )
+        token = await backend.login(PETER, test_password)
+        assert token
+        assert (await backend.telegram_status(token)).available is False
+        with pytest.raises(TelegramUnavailable):
+            await backend.telegram_link(token)
+
+
+def test_status_text_shows_who_is_connected() -> None:
+    assert tg.status_text(TelegramStatus(True, False)) == "Telegram is not connected."
+    assert "@pete" in tg.status_text(TelegramStatus(True, True, "pete"))
+    assert "a Telegram account" in tg.status_text(TelegramStatus(True, True, None))
+
+
+def test_link_text_and_qr_code_carry_the_link() -> None:
+    link = ConnectLink(link="https://t.me/caredesk_test_bot?start=abc", expires_at="")
+    assert link.link in tg.link_text(link)
+    assert "expires in 10 minutes" in tg.link_text(link)
+    assert tg.qr_png(link.link).startswith(b"\x89PNG")
 
 
 # ---------- the UI never holds model keys (step 19) ----------
