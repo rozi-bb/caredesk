@@ -1,6 +1,6 @@
 # ADR-0027: Telegram is one more client of the backend, linked with a one-time code
 
-- Status: Accepted
+- Status: Accepted; sending answers whole replaced by [ADR-0028](0028-telegram-answers-stream-as-drafts.md)
 - Date: 2026-10-13
 
 ## Context
@@ -19,7 +19,8 @@ Staff and family should be able to chat with CareDesk from Telegram as well as f
 - **Unlinking** from Chainlit ("Disconnect Telegram") or from the bot (`/disconnect`) takes effect on the next message.
 - **Answers are sent whole**, with Telegram's "typing…" indicator while the agent works, and split if longer than Telegram allows in one message.
 - **Usage records the channel** (web or Telegram), so monitoring can compare them.
-- **Fixed texts come from the backend.** The greeting and the emergency contacts are served by the backend, so Chainlit and the bot never hold copies that could drift apart.
+- **Fixed texts come from the backend.** The greeting and the emergency contacts are served by the backend's public `GET /texts` (they hold nothing private, and an unconnected user must still see the contacts), built from the numbers written once in `agent/triage.py`. Chainlit and the bot hold no copies, except one line, "press the call bell or call 911", shown only when the backend cannot be reached.
+- **Users are served side by side.** One user's slow answer never holds up another user's message, which could be an emergency (rule 4); each user's own messages are still handled in order.
 - **No admin settings page.** Bot settings live in `.env`: one home with one bot does not need one.
 
 ## Alternatives considered

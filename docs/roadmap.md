@@ -98,12 +98,13 @@ Staff and family can also chat with CareDesk from Telegram. Telegram is one more
 | T1 | Create the bot with @BotFather; the bot token and the bot's backend key live only in `.env` | ✅ |
 | T2 | Backend: links and one-time codes tables, connect and disconnect endpoints, chat endpoint for the bot, channel in usage | ✅ |
 | T3 | Chainlit: Connect Telegram, the connected account's status, Disconnect | ✅ |
-| T4 | Bot adapter: passes messages on, `/new`, `/disconnect`, private chats only, connect instructions and emergency contacts for unlinked users | ⬜ |
-| T5 | Fixed texts (greeting, emergency contacts) served by the backend, so Chainlit and the bot keep no copies of their own | ⬜ |
-| 18 | Business-flow tests for Telegram (prd.md section 8) | ⬜ |
-| 19 | Security tests for Telegram (prd.md section 8) | ⬜ |
-| 17 | Run the four evaluations again to catch regressions | ⬜ |
-| — | Try it in real Telegram; update the README and `manual-testing.md`; write the iteration note | ⬜ |
+| T4 | Bot adapter: passes messages on, `/new`, `/disconnect`, private chats only, connect instructions and emergency contacts for unlinked users | ✅ |
+| T5 | Fixed texts (greeting, emergency contacts) served by the backend, so Chainlit and the bot keep no copies of their own | ✅ |
+| T6 | Stream answers in Telegram as they are written, with Telegram's message drafts ([ADR-0028](adr/0028-telegram-answers-stream-as-drafts.md)) | ✅ |
+| 18 | Business-flow tests for Telegram (prd.md section 8) | ✅ |
+| 19 | Security tests for Telegram (prd.md section 8) | ✅ |
+| 17 | Run the four evaluations again to catch regressions | ✅ |
+| — | Try it in real Telegram; update the README and `manual-testing.md`; write the iteration note | ✅ [note](iterations/telegram.md) |
 
 Bot settings stay in `.env`; there is no admin settings page, because one home with one bot does not need one.
 

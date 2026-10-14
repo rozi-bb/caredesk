@@ -52,6 +52,14 @@ class Thread:
 
 
 @dataclass(frozen=True)
+class Texts:
+    """Fixed texts from the backend: what to ask, and the emergency contacts."""
+
+    topics: str
+    emergency_notice: str
+
+
+@dataclass(frozen=True)
 class TelegramStatus:
     """Whether Telegram can be used, and whether the user's account is connected."""
 
@@ -94,6 +102,13 @@ class BackendClient:
         if response.status_code == 404:
             raise ConversationNotFound
         response.raise_for_status()
+
+    async def texts(self) -> Texts:
+        """Return the fixed texts every client shows."""
+        async with self._http() as http:
+            response = await http.get("/texts")
+        response.raise_for_status()
+        return Texts(**response.json())
 
     async def login(self, email: str, password: str) -> str | None:
         """Return a token, or None if the email or password is wrong."""

@@ -71,6 +71,7 @@ uv run python -m evals.run       # LangSmith evaluations (real API calls)
 - `src/agent/db/`: database connections and the fixed `REFERENCE_DATE` that stands for "today"
 - `src/backend/`: the HTTP API: sign-in, conversations, the streaming chat endpoint (`main.py`), app-table queries (`store.py`), passwords and tokens (`security.py`)
 - `src/ui/`: the Chainlit chat UI (`app.py`) and its backend client (`client.py`); runs from its own folder with its own `.env`, and must never import `agent`, `backend`, or model code
+- `src/telegram_bot/`: the Telegram bot (`bot.py`), what it replies (`relay.py`), streaming answers as drafts (`streaming.py`), its backend client (`backend.py`), and Telegram formatting (`format.py`); runs with its own `.env`, and must never import `agent`, `backend`, `ui`, or model code
 - `migrations/`: Alembic migrations; every schema change is a new file here
 - `scripts/seed_db.py`: rebuilds the database with synthetic data and demo accounts (passwords go to git-ignored `data/demo_accounts.csv`)
 - `tests/unit_tests/`, `tests/integration_tests/`

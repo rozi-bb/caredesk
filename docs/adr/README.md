@@ -32,4 +32,5 @@ Format: Status, Date, Context, Decision, Alternatives considered, Consequences. 
 | [0024](0024-chainlit-ui-as-backend-client.md) | The chat UI is a Chainlit app that only calls the backend | Accepted; history part superseded by 0025 |
 | [0025](0025-sidebar-history-from-the-backend.md) | Sidebar history read from the backend | Accepted |
 | [0026](0026-no-deployment.md) | CareDesk runs locally only; no deployment | Accepted |
-| [0027](0027-telegram-as-a-backend-client.md) | Telegram is one more client of the backend, linked with a one-time code | Accepted |
+| [0027](0027-telegram-as-a-backend-client.md) | Telegram is one more client of the backend, linked with a one-time code | Accepted; sending answers whole replaced by 0028 |
+| [0028](0028-telegram-answers-stream-as-drafts.md) | Telegram answers stream as message drafts | Accepted |

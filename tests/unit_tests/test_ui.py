@@ -12,6 +12,7 @@ import pytest
 from chainlit.types import Pagination, ThreadFilter
 from chainlit.user import User
 
+from agent.triage import EMERGENCY_NOTICE
 from ui import telegram_link as tg
 from ui.client import (
     BackendClient,
@@ -39,6 +40,12 @@ async def backend(
     app = app_with_fakes(url)
     async with app.router.lifespan_context(app):
         yield BackendClient("http://backend", transport=httpx.ASGITransport(app=app))
+
+
+async def test_greeting_texts_come_from_the_backend(backend: BackendClient) -> None:
+    texts = await backend.texts()
+    assert texts.emergency_notice == EMERGENCY_NOTICE
+    assert "schedules" in texts.topics
 
 
 async def test_sign_in_and_profile(backend: BackendClient, test_password: str) -> None:

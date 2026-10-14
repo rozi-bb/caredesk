@@ -129,8 +129,9 @@ Code: `src/backend/` (`main.py` routes, `store.py` queries, `security.py` passwo
 | `POST /threads/{id}/messages` | Ask a question; the answer streams back |
 | `GET /me/telegram`, `DELETE /me/telegram` | Whether your account is connected to Telegram, and as whom; disconnect |
 | `POST /me/telegram/code` | A one-time `t.me` link that connects your Telegram account |
+| `GET /texts` | The fixed texts every client shows: what to ask, and the emergency contacts (from `agent/triage.py`, where the numbers are written once) |
 
-Everything except `/health` and `/auth/login` needs a token. A thread that belongs to someone else gets the same 404 as one that does not exist.
+Everything except `/health`, `/auth/login`, and `/texts` needs a token. A thread that belongs to someone else gets the same 404 as one that does not exist.
 
 **Bot endpoints** (`/telegram/...`) are for the Telegram bot only and need its key in the `X-Bot-Key` header, never a user token. Without `TELEGRAM_BOT_USERNAME` and `TELEGRAM_BOT_KEY` set, they do not exist (404).
 
@@ -138,6 +139,7 @@ Everything except `/health` and `/auth/login` needs a token. A thread that belon
 |---|---|
 | `POST /telegram/connect` | Code and Telegram user id in; connects them and uses the code up. A used, expired, or unknown code gets 400 |
 | `POST /telegram/messages` | A connected user's message; the answer streams back exactly as in the web chat |
+| `POST /telegram/me` | Who the Telegram user is connected as |
 | `POST /telegram/new` | The next message starts a new session |
 | `POST /telegram/disconnect` | Disconnects the Telegram user |
 
@@ -161,7 +163,7 @@ Code: `src/ui/` (`app.py` Chainlit handlers, `client.py` backend client, `data_l
 |---|---|
 | Sign-in | Chainlit's password form; the backend checks it and returns a token, kept in the Chainlit session for 8 hours |
 | Sidebar | The signed-in user's past conversations, listed by the backend with that user's token |
-| New chat | A greeting with emergency contacts |
+| New chat | A greeting with emergency contacts, both from the backend's `/texts` |
 | Message | The backend thread is created on the first message, with Chainlit's thread id; the answer streams in |
 | Open a past conversation | Its messages are loaded from the backend and the chat continues in the same thread |
 | Delete | Through the backend, which checks ownership |
@@ -170,6 +172,20 @@ Code: `src/ui/` (`app.py` Chainlit handlers, `client.py` backend client, `data_l
 The sidebar comes from a Chainlit data layer that stores nothing ([ADR-0025](adr/0025-sidebar-history-from-the-backend.md)). A thread's owner is known only once the backend has returned it with the owner's token; an unknown thread counts as not found, so Chainlit refuses to open it. The backend checks ownership again on every call.
 
 The UI holds no model keys and has its own `.env` with only `BACKEND_URL` and `CHAINLIT_AUTH_SECRET`. It never imports the graph, a model, or the database.
+
+### Telegram bot
+
+Code: `src/telegram_bot/` (`bot.py` Telegram wiring, `relay.py` replies, `streaming.py` drafts while the answer is written, `backend.py` backend client, `format.py` Telegram formatting). Run with `uv run --env-file src/telegram_bot/.env python -m telegram_bot`.
+
+- The bot fetches messages from Telegram (polling), so it runs locally without a public address.
+- It answers only in private chats; group messages are ignored, so no group member reads a resident's data.
+- Each message goes to the backend with the bot key and the sender's Telegram user id; the backend decides the account (section 3).
+- The answer streams in as a Telegram message draft, updated at most once a second, and is then sent as a normal message, which is what stays in the chat ([ADR-0028](adr/0028-telegram-answers-stream-as-drafts.md)). It is converted from Markdown to Telegram's HTML and split under the 4096-character limit; finished parts are sent while the rest is still being written. "typing…" shows until the first words arrive.
+- Different users are served side by side, so one slow answer never holds up another user's emergency; each user's own messages are handled in order.
+- Users who have not connected get only how to connect and the emergency contacts, both from the backend's `/texts`. If the backend is down, the bot still says to call 911.
+- httpx request logging is off, because Telegram's request URLs contain the bot token.
+
+The bot's `.env` holds only `BACKEND_URL`, `TELEGRAM_BOT_TOKEN`, and `TELEGRAM_BOT_KEY`. It never imports the graph, a model, or the database.
 
 ## 7. Data
 

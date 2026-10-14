@@ -16,6 +16,21 @@ Start the backend and the UI (README, steps 6 and 7) and open http://localhost:8
 
 Privacy check: sign in as Peter and ask something, then log out and sign in as Anne. Anne's sidebar must not show Peter's conversation, and opening Peter's conversation link (`/thread/<id>`) must fail.
 
+### In Telegram
+
+Start the bot as well (README, step 8). Sign in on the web as Peter, press **Connect Telegram**, and open the link on your phone (or scan the QR code), then press **Start**. The questions below work the same in Telegram. Also try:
+
+| Try | Expect |
+|---|---|
+| Open the same connect link a second time, from another Telegram account | "This link is invalid or has expired" |
+| Ask "What is Harold doing today?", then "And tomorrow?" | The second answer follows from the first; the conversation shows in the web sidebar |
+| Ask for something long, such as "Summarise the visiting rules" | The answer grows while it is written, then stays as a normal message |
+| `/new`, then ask again | A new conversation, also in the sidebar |
+| A photo or voice message | "I can only read text messages" |
+| `/disconnect`, then ask anything | No answer: how to connect, with the emergency contacts |
+| On the web, **Connect Telegram** status | Shows which Telegram account is connected; **Disconnect** there stops the bot answering at once |
+| From a Telegram account that never connected | Only how to connect, and the emergency contacts |
+
 ### Through the API instead
 
 Start the backend (`uv run uvicorn backend.main:app --env-file .env`) and open http://127.0.0.1:8000/docs. Sign in with `POST /auth/login` using an email and password from `data/demo_accounts.csv`, press **Authorize** and paste the token, create a thread with `POST /threads`, and ask with `POST /threads/{thread_id}/messages`. The identity comes from the account, as in the UI.

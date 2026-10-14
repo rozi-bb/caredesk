@@ -30,10 +30,13 @@ from ui.data_layer import BackendDataLayer
 backend = BackendClient(os.environ.get("BACKEND_URL", "http://127.0.0.1:8000"))
 history = BackendDataLayer(backend)
 
-GREETING = (
-    "Hi {name}. Ask me about schedules, activities, visits, billing, or the home's rules.\n\n"
-    "**In an emergency, press the call bell, call the nurse station on extension 200, "
-    "or call 911.**"
+# The topics and emergency contacts come from the backend (GET /texts), so the
+# chat and the Telegram bot always show the same numbers.
+GREETING = "Hi {name}. {topics}\n\n**{emergency_notice}**"
+# Only when the backend cannot be reached: the emergency line must still show.
+OFFLINE_GREETING = (
+    "Hi {name}. CareDesk is not reachable right now. Please try again in a moment.\n\n"
+    "**In an emergency, press the call bell or call 911.**"
 )
 SIGNED_OUT = "Your sign-in has expired. Please sign out and sign in again."
 UNREACHABLE = "CareDesk is not reachable right now. Please try again in a moment."
@@ -77,7 +80,13 @@ async def start() -> None:
     """Greet the user and offer Telegram. Past conversations are in the sidebar."""
     user = _user()
     name = user.display_name if user and user.display_name else "there"
-    text = GREETING.format(name=name)
+    try:
+        texts = await backend.texts()
+        text = GREETING.format(
+            name=name, topics=texts.topics, emergency_notice=texts.emergency_notice
+        )
+    except httpx.HTTPError:
+        text = OFFLINE_GREETING.format(name=name)
     status = await _telegram_status()
     actions: list[cl.Action] = []
     if status and status.available:

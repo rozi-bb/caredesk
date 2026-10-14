@@ -35,6 +35,7 @@ from pydantic import BaseModel, Field
 
 from agent.context import Context
 from agent.graph import build_graph
+from agent.triage import EMERGENCY_NOTICE
 from backend import store
 from backend.config import Settings
 from backend.security import (
@@ -55,6 +56,15 @@ GraphFactory = Callable[[AsyncPostgresSaver], Graph]
 # Nodes whose reply is fixed text rather than streamed model tokens.
 FIXED_REPLY_NODES = ("emergency_response", "decline_clinical")
 ERROR_REPLY = "Something went wrong on our side. Please try again."
+# Shown by every client, so the wording lives here once (ADR-0027).
+TOPICS = "Ask me about schedules, activities, visits, billing, or the home's rules."
+
+
+class Texts(BaseModel):
+    """Fixed texts every client shows: what to ask, and the emergency contacts."""
+
+    topics: str
+    emergency_notice: str
 
 
 class LoginRequest(BaseModel):
@@ -267,6 +277,15 @@ def create_app(
             ) from error
         return {"status": "ok"}
 
+    @app.get("/texts")
+    async def texts() -> Texts:
+        """Return the fixed texts.
+
+        Public: they hold nothing private, and a Telegram user who has not
+        connected must still see the emergency contacts.
+        """
+        return Texts(topics=TOPICS, emergency_notice=EMERGENCY_NOTICE)
+
     @app.post("/auth/login")
     async def login(request: Request, body: LoginRequest) -> TokenResponse:
         """Exchange email and password for a sign-in token."""
@@ -406,6 +425,12 @@ def create_app(
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST, "This link is invalid or has expired."
             )
+        return ConnectedOut(name=account.full_name)
+
+    @bot.post("/me")
+    async def bot_whoami(request: Request, body: TelegramUser) -> ConnectedOut:
+        """Say who a Telegram user is connected as; 403 if not connected."""
+        account = await connected_account(request, body.telegram_user_id)
         return ConnectedOut(name=account.full_name)
 
     @bot.post("/disconnect", status_code=status.HTTP_204_NO_CONTENT)

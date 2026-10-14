@@ -95,6 +95,20 @@ Requires Python 3.11+, [uv](https://docs.astral.sh/uv/), and Docker.
 
    Open http://localhost:8001 and sign in with an email and password from `data/demo_accounts.csv`.
 
+8. Optional: chat from Telegram too. Create a bot with [@BotFather](https://t.me/BotFather) (`/newbot`; `/setjoingroups` → Disable). In the root `.env`, set `TELEGRAM_BOT_USERNAME` to the bot's username and `TELEGRAM_BOT_KEY` to a new random key, then restart the backend. The bot has its own environment file:
+
+   ```bash
+   cp src/telegram_bot/.env.example src/telegram_bot/.env
+   ```
+
+   Fill in the token from BotFather and the same `TELEGRAM_BOT_KEY`, then, in a third terminal:
+
+   ```bash
+   uv run --env-file src/telegram_bot/.env python -m telegram_bot
+   ```
+
+   In the chat UI, press **Connect Telegram** and open the link (or scan the QR code) on your phone. The bot fetches messages itself, so nothing needs to be reachable from the internet.
+
 The backend's API can also be tried directly at http://127.0.0.1:8000/docs. For development, the graph runs in LangGraph Studio with the identity typed in by hand:
 
 ```bash

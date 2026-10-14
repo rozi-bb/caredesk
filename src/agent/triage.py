@@ -65,13 +65,22 @@ When a message could be an emergency, choose emergency.
 Reply with JSON only:
 {"category": "emergency" | "clinical" | "normal", "reason": "<one short sentence>"}"""
 
-EMERGENCY_RESPONSE = """\
+# The home's emergency contacts, written once. Every fixed text below, and the
+# notice the chat UI and the Telegram bot show (served by the backend), uses them.
+NURSE_STATION = "extension 200"
+EMERGENCY_NUMBER = "911"
+EMERGENCY_NOTICE = (
+    f"In an emergency, press the call bell, call the nurse station on {NURSE_STATION}, "
+    f"or call {EMERGENCY_NUMBER}."
+)
+
+EMERGENCY_RESPONSE = f"""\
 This sounds like an emergency. If someone is in danger right now:
 - Press the call bell or alert the nearest staff member.
-- Call the nurse station on extension 200 (staffed 24 hours).
-- If someone's life is in danger, call 911.
+- Call the nurse station on {NURSE_STATION} (staffed 24 hours).
+- If someone's life is in danger, call {EMERGENCY_NUMBER}.
 
-{recorded}
+{{recorded}}
 I am an administrative assistant and cannot assess the situation myself."""
 
 RECORDED = "I have recorded your message for the nursing team to follow up."
@@ -79,11 +88,11 @@ NOT_RECORDED = (
     "I could not record your message, so please also tell a staff member directly."
 )
 
-CLINICAL_RESPONSE = """\
+CLINICAL_RESPONSE = f"""\
 I can't give medical advice, diagnoses, or guidance about medication or treatment.
-Please speak to the nursing staff at the nurse station (extension 200, staffed 24 hours),
+Please speak to the nursing staff at the nurse station ({NURSE_STATION}, staffed 24 hours),
 who can look at the situation properly.
-If you think someone is in danger right now, press the call bell or call 911."""
+If you think someone is in danger right now, press the call bell or call {EMERGENCY_NUMBER}."""
 
 
 class TriageResult(BaseModel):

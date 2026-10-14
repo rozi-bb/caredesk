@@ -11,7 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, ToolMessage
 
-from agent.triage import CLINICAL_RESPONSE
+from agent.triage import CLINICAL_RESPONSE, EMERGENCY_NOTICE, EMERGENCY_RESPONSE
 from backend.security import create_token
 
 from .fakes import ANNE, ANSWER, PETER, SECRET, answering
@@ -22,6 +22,16 @@ from .helpers import answer_text, chat, new_thread, sign_in, usage_rows
 
 def test_health(client: TestClient) -> None:
     assert client.get("/health").json() == {"status": "ok"}
+
+
+def test_fixed_texts_are_public_and_share_the_agents_contacts(
+    client: TestClient,
+) -> None:
+    texts = client.get("/texts").json()
+    assert texts["emergency_notice"] == EMERGENCY_NOTICE
+    # The notice and the agent's emergency reply give the same numbers.
+    for contact in ("extension 200", "911"):
+        assert contact in EMERGENCY_NOTICE and contact in EMERGENCY_RESPONSE
 
 
 def test_sign_in_and_profile_come_from_the_account(
