@@ -41,7 +41,7 @@ The project owner is learning and must be able to explain every part of this cod
 - LangGraph 1.x, LangChain 1.x
 - Backend: FastAPI; Postgres 17 in Docker, accessed with psycopg 3; migrations with Alembic in plain SQL
 - Chat UI: Chainlit, as a client of the backend API only
-- Models: DeepSeek through `langchain-deepseek` (`deepseek-flash` for high-volume steps, `deepseek-v4-pro` for final answers when needed). OpenAI is planned for embeddings and the eval judge but is not configured yet.
+- Models: DeepSeek through `langchain-deepseek` (`deepseek-flash` for high-volume steps, `deepseek-v4-pro` for final answers when needed). Triage uses Jev through TypeSafe's `typesafe-sdk`, with `deepseek-flash` as the fallback. OpenAI is planned for embeddings and the eval judge but is not configured yet.
 - Tracing and evaluation: LangSmith (project `caredesk`)
 
 ## Commands
@@ -56,6 +56,7 @@ uv run ruff check .              # lint
 uv run ruff format .             # format
 uv run mypy --strict src         # type check
 uv run python -m evals.run       # LangSmith evaluations (real API calls)
+uv run python -m evals.compare_triage   # Jev vs the fallback classifier on the safety cases (real API calls)
 ```
 
 ## Layout
@@ -66,7 +67,7 @@ uv run python -m evals.run       # LangSmith evaluations (real API calls)
 - `src/agent/records.py`: every database query, with its permission filter
 - `src/agent/tools.py`: the tools the model can call; thin wrappers over `records.py` and `rules.py`
 - `src/agent/rules.py`: rules search over `corpus/` (F-tags and the handbook)
-- `src/agent/triage.py`: emergency and clinical triage, fixed responses, and the emergency incident write
+- `src/agent/triage.py`: emergency and clinical triage (the Jev question and routing rule, the fallback prompt), fixed responses, and the emergency incident write
 - `corpus/`: the rules text that is indexed; `scripts/build_rules_index.py` builds `data/rules_index.json`
 - `src/agent/db/`: database connections and the fixed `REFERENCE_DATE` that stands for "today"
 - `src/backend/`: the HTTP API: sign-in, conversations, the streaming chat endpoint (`main.py`), app-table queries (`store.py`), passwords and tokens (`security.py`)

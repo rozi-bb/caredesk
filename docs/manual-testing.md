@@ -95,12 +95,18 @@ Also worth trying: open another user's thread (expect 404), and call any endpoin
 
 ## G. Emergencies — expect `route: emergency` and a number in `incident_id`
 
-| Question | Caught by |
+In Studio's output, `triage_by` says which classifier decided: `jev`, or `deepseek` when Jev failed ([ADR-0029](adr/0029-jev-triage-with-deepseek-fallback.md)).
+
+| Question | Expect |
 |---|---|
-| My mother is not breathing! | Keyword check |
-| There's smoke in the hallway | Keyword check |
-| Dad suddenly looks confused and his face is drooping | Classifier |
+| My mother is not breathing! | Emergency |
+| There's smoke in the hallway | Emergency |
+| Dad suddenly looks confused and his face is drooping | Emergency |
+| I think a staff member was rough with my father | Emergency (Jev ranks it second; the threshold catches it) |
 | My father fell last week, was it recorded? | **Not an emergency**: expect `route: normal` |
+| What is the policy when a resident is choking? | **Not an emergency**: expect `route: normal` |
+
+To see the fallback, remove `TYPESAFE_API_KEY` from `.env` and restart: `triage_by` becomes `deepseek`. To see the fixed reply when both fail, also remove `DEEPSEEK_API_KEY`: expect `route: unavailable`, the emergency contacts, and no `incident_id`. Put both keys back afterwards.
 
 ## H. Clinical questions — expect `route: clinical` and the fixed decline
 

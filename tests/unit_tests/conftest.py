@@ -9,6 +9,13 @@ from fastapi.testclient import TestClient
 from .fakes import FakeModel, app_with_fakes
 
 
+@pytest.fixture(autouse=True)
+def no_jev_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Unit tests make no API calls: a graph built without a fake Jev must fail
+    # over to its fake fallback, never reach TypeSafe.
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+
+
 @pytest.fixture(scope="module")
 def api_db(make_database) -> str:
     return make_database()

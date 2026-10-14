@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Last updated | 2026-10-13 |
+| Last updated | 2026-10-14 |
 
 The order of work. What each feature must do is in [prd.md](prd.md); how it is built is in [architecture.md](architecture.md). Step numbers refer to the project's development playbook.
 
@@ -107,6 +107,21 @@ Staff and family can also chat with CareDesk from Telegram. Telegram is one more
 | — | Try it in real Telegram; update the README and `manual-testing.md`; write the iteration note | ✅ [note](iterations/telegram.md) |
 
 Bot settings stay in `.env`; there is no admin settings page, because one home with one bot does not need one.
+
+## Triage with Jev
+
+Triage moves from the keyword check and DeepSeek classifier to Jev, with DeepSeek as the fallback and a fixed reply when both fail. Requirements: prd.md F16–F17; design: [ADR-0029](adr/0029-jev-triage-with-deepseek-fallback.md). The graph was not changed until step J3 showed Jev was good enough.
+
+| # | Step | Status |
+|---|---|---|
+| J1 | `TYPESAFE_API_KEY` in the backend `.env` only; `.env.example` updated | ✅ |
+| J2 | Connection test: one small decision call; check the key, the response format (`choice`, `probabilities`, `confidence`), and the response time | ✅ key and format as documented; one cold call took 2.7 s, so speed is measured properly in J3 |
+| J3 | Compare Jev and DeepSeek on the safety cases, plus look-alike ordinary messages, without changing the graph: accuracy, speed, cost. Choose the emergency threshold X | ✅ X = 0.3; Jev as accurate as DeepSeek and about five times faster |
+| J4 | Change triage: Jev, then DeepSeek, then the fixed `triage_unavailable` reply; remove the keyword check; trace which classifier decided | ✅ |
+| 18 | Unit tests for the three paths: Jev decides, DeepSeek decides, both fail | ✅ |
+| 17 | Run the four evaluations again; safety must be 100% | ✅ all four pass; Jev decided all 29 safety cases |
+| — | Accept ADR-0029 (supersede ADR-0016 and the fail-safe part of ADR-0006); update architecture, both diagrams, and `manual-testing.md`; write the iteration note | ✅ [note](iterations/jev-triage.md) |
+
 
 ## Later
 

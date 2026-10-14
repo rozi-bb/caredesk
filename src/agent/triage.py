@@ -1,48 +1,28 @@
 """Triage: decide whether a message is an emergency, a clinical question, or normal.
 
-Runs before anything else (ADR-0006). Unmistakable emergencies are caught by
-a keyword check that needs no model call (ADR-0016). Everything else is
-classified by the model; if that call fails, the message is treated as an
-emergency, because a false alarm is cheap and a missed emergency is not.
+Runs before anything else (ADR-0006). Jev labels every message; if Jev fails,
+the DeepSeek classifier labels it instead; if both fail, the message cannot
+be checked and gets a fixed reply with the emergency contacts (ADR-0029).
 """
 
 from __future__ import annotations
 
-import re
+import asyncio
 from datetime import datetime
-from typing import Literal
+from functools import cache
+from typing import Literal, get_args
 
 import psycopg
+from langsmith import traceable
 from pydantic import BaseModel, Field
+from typesafe_sdk import AsyncTypeSafeClient, Choice, RetryPolicy
 
 from agent.context import Context
 from agent.db import REFERENCE_DATE, connect_writable
 
 Route = Literal["emergency", "clinical", "normal"]
-
-_EMERGENCY_PHRASES = [
-    r"not breathing",
-    r"(can't|cannot|can not|struggling to) breathe",
-    r"stopped breathing",
-    r"chest pains?",
-    r"unconscious",
-    r"unresponsive",
-    r"(isn't|is not|won't|will not|not) waking up",
-    r"can't wake",
-    r"choking",
-    r"bleeding (heavily|a lot|badly)",
-    r"(i|i've|i have|has|have) (just )?(fallen|fell)( down)?\b(?! (last|yesterday|on|in|two|three|a few|earlier))",
-    r"just (fell|fallen)",
-    r"on the floor and can't get up",
-    r"can't get up",
-    r"(there's|there is) (a )?fire",
-    r"on fire",
-    r"(smell|see|there's|there is) smoke",
-    r"smoke (is )?(coming|in)",
-]
-EMERGENCY_KEYWORDS = re.compile(
-    r"\b(" + "|".join(_EMERGENCY_PHRASES) + r")", re.IGNORECASE
-)
+# "unavailable" is never a classifier's answer: it means no classifier answered.
+TriageRoute = Literal["emergency", "clinical", "normal", "unavailable"]
 
 TRIAGE_PROMPT = """\
 Classify the user's latest message to a nursing home's administrative assistant.
@@ -94,6 +74,11 @@ Please speak to the nursing staff at the nurse station ({NURSE_STATION}, staffed
 who can look at the situation properly.
 If you think someone is in danger right now, press the call bell or call {EMERGENCY_NUMBER}."""
 
+UNAVAILABLE_RESPONSE = f"""\
+I can't check your message right now because part of our system is unavailable.
+If someone is in danger, press the call bell, call the nurse station on {NURSE_STATION} (staffed 24 hours), or call {EMERGENCY_NUMBER}.
+For anything else, please try again in a few minutes."""
+
 
 class TriageResult(BaseModel):
     """The model's classification of one message."""
@@ -102,9 +87,82 @@ class TriageResult(BaseModel):
     reason: str = Field(description="One short sentence explaining the choice")
 
 
-def keyword_emergency(text: str) -> bool:
-    """Return True for phrases that are emergencies without any interpretation."""
-    return EMERGENCY_KEYWORDS.search(text) is not None
+JEV_MODEL = "jev-latest"
+# Jev's 95th percentile was 0.7 s in the J3 comparison; a hung call is cut
+# short so the fallback still answers quickly.
+JEV_TIMEOUT = 3.0
+# Chosen in J3: below every ordinary look-alike (at most 0.25), so emergencies
+# that Jev ranks second, such as suspected abuse, still count (ADR-0029).
+EMERGENCY_THRESHOLD = 0.3
+
+JEV_QUESTION = Choice(
+    instructions=(
+        "Classify the user's latest message to a nursing home's administrative "
+        "assistant. When a message could be an emergency, choose emergency."
+    ),
+    criteria={
+        "emergency": {
+            "what": "Someone may be in danger right now: a fall that is happening or "
+            "just happened, trouble breathing, chest pain, someone unresponsive, "
+            "sudden confusion or a drooping face, choking, heavy bleeding, fire or "
+            "smoke, a resident missing, or someone being hurt, hit, or treated "
+            "roughly by another person, including suspected abuse.",
+            "not_for": "General questions about what a policy, procedure, or rule "
+            "says, such as what staff do when a resident chokes or what the fire "
+            "evacuation procedure is; questions about past events, such as whether "
+            "last week's fall was recorded; and appointments.",
+        },
+        "clinical": {
+            "what": "Asks for medical judgement: a diagnosis, what a symptom or test "
+            "result means, whether to take, stop, or change a medicine or its dose, "
+            "or what treatment someone should have.",
+            "not_for": "Medication-round times or other schedules.",
+        },
+        "normal": {
+            "what": "Everything else, including administrative questions about "
+            "schedules, medication-round times, visits, billing, past incidents, "
+            "and what the rules say about restraints, bed rails, or refusing care.",
+        },
+    },
+)
+
+
+@cache
+def _jev_client(loop: asyncio.AbstractEventLoop) -> AsyncTypeSafeClient:
+    # One client per event loop: its connection pool belongs to the loop that
+    # created it, and reusing a warm connection is what keeps Jev fast.
+    return AsyncTypeSafeClient(
+        model=JEV_MODEL, retry=RetryPolicy(max_retries=0), timeout=JEV_TIMEOUT
+    )
+
+
+@traceable(name="jev_triage")
+async def jev_probabilities(text: str) -> dict[str, float]:
+    """Ask Jev how likely the message is to be each triage label.
+
+    No retries (ADR-0029): a retry would double the wait, and an unclear
+    outcome could be billed twice. Any failure raises, so the caller can fall
+    back to the other classifier.
+    """
+    async with asyncio.timeout(JEV_TIMEOUT):
+        response = await _jev_client(asyncio.get_running_loop()).system_one(
+            state=text, questions={"triage": JEV_QUESTION}
+        )
+    return dict(response.choices["triage"].probabilities)
+
+
+def jev_route(probabilities: dict[str, float]) -> Route:
+    """Turn Jev's probabilities into a route, leaning toward emergency.
+
+    Raises ValueError if the labels are not exactly the triage labels, so an
+    unexpected answer is handled like any other Jev failure.
+    """
+    labels: tuple[Route, ...] = get_args(Route)
+    if set(probabilities) != set(labels):
+        raise ValueError(f"Unexpected Jev labels: {sorted(probabilities)}")
+    if probabilities["emergency"] >= EMERGENCY_THRESHOLD:
+        return "emergency"
+    return max(labels, key=lambda label: probabilities[label])
 
 
 def record_emergency(ctx: Context, message: str) -> int | None:

@@ -4,7 +4,7 @@
 |---|---|
 | Status | Draft |
 | Release | Telegram channel (release 2 shipped as `v0.2.1`) |
-| Last updated | 2026-10-13 |
+| Last updated | 2026-10-14 |
 
 ## 1. Problem
 
@@ -76,6 +76,15 @@ Staff and family members can also chat with CareDesk from Telegram. The assistan
 | F14 | **One history.** Telegram continues the user's current session; `/new` starts a new one. Sessions from Telegram also appear in the browser sidebar. |
 | F15 | **Disconnect.** Users can disconnect from the browser or with `/disconnect` in Telegram, for example after losing their phone. |
 
+## 5c. Functional requirements — triage with Jev
+
+Triage moves to Jev, a model built for fast decisions, with DeepSeek as the fallback ([ADR-0029](adr/0029-jev-triage-with-deepseek-fallback.md)). F4 and F5 do not change for the user.
+
+| ID | Requirement |
+|---|---|
+| F16 | **No false alarms from single phrases.** Ordinary messages that only contain an emergency phrase, such as "I can't get up early for the 8am visit" or "What is the policy when a resident is choking?", are not handled as emergencies. |
+| F17 | **When a message cannot be checked.** If triage cannot decide (both Jev and the fallback fail), the user gets a fixed reply: the message could not be checked, the emergency contacts, and a request to try again. No incident is recorded and the question is not answered. |
+
 ## 6. Product rules
 
 These hold in every release. They must hold no matter what the user types, including attempts to talk the assistant out of them.
@@ -123,6 +132,13 @@ The Telegram channel is done when:
 
 - Business-flow tests pass: connecting works from the link, a connected user gets answers, `/new` and disconnecting work, and Telegram sessions appear in the browser sidebar.
 - Security tests pass, all pass/fail: a user who has not connected gets no data, a used or expired link is refused, a connected user sees only their own data, the bot answers nothing in group chats, and the bot token and backend key never reach a user.
+
+Triage with Jev is done when:
+
+- The safety evaluation is 100% with Jev, and also with the fallback classifier alone.
+- The safety evaluation includes look-alike ordinary messages (F16), and none of them is handled as an emergency.
+- Unit tests show all three paths: Jev decides, the fallback decides, and both fail with the fixed reply (F17).
+- The other three evaluations still meet their targets.
 
 ## 9. Out of scope
 

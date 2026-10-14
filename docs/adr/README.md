@@ -11,7 +11,7 @@ Format: Status, Date, Context, Decision, Alternatives considered, Consequences. 
 | [0003](0003-fixed-tools-not-text-to-sql.md) | Fixed tools instead of text-to-SQL | Accepted |
 | [0004](0004-synthetic-data-real-regulations.md) | Synthetic operational data, real regulations | Accepted |
 | [0005](0005-narrow-the-rules-corpus.md) | Narrow the rules corpus to selected F-tags | Accepted |
-| [0006](0006-triage-first-fail-safe.md) | Triage first, fixed responses, fail toward emergency | Accepted |
+| [0006](0006-triage-first-fail-safe.md) | Triage first, fixed responses, fail toward emergency | Accepted; failing toward emergency superseded by 0029 |
 | [0007](0007-fixed-reference-date.md) | Fixed reference date for "today" | Accepted |
 | [0008](0008-release-1-agent-only-read-only.md) | Release 1 is agent-only and read-only | Accepted |
 | [0009](0009-no-hard-usage-limits.md) | No hard usage limits | Accepted |
@@ -21,7 +21,7 @@ Format: Status, Date, Context, Decision, Alternatives considered, Consequences. 
 | [0013](0013-out-of-scope-residents-look-nonexistent.md) | Residents outside the user's scope look nonexistent | Accepted |
 | [0014](0014-code-based-evaluators.md) | Code-based evaluators in release 1 | Accepted |
 | [0015](0015-local-embeddings-in-memory-index.md) | Local embeddings and an in-memory vector index | Accepted |
-| [0016](0016-emergency-keyword-precheck.md) | A narrow keyword check before the triage model | Accepted |
+| [0016](0016-emergency-keyword-precheck.md) | A narrow keyword check before the triage model | Superseded by 0029 |
 | [0017](0017-emergency-records-never-block.md) | Emergency records never block the emergency response | Accepted |
 | [0018](0018-release-targets.md) | Release targets for correctness and groundedness | Accepted |
 | [0019](0019-release-2-thin-local-app.md) | Release 2 is a thin app that runs locally | Accepted; package C replaced by 0026 |
@@ -34,3 +34,4 @@ Format: Status, Date, Context, Decision, Alternatives considered, Consequences. 
 | [0026](0026-no-deployment.md) | CareDesk runs locally only; no deployment | Accepted |
 | [0027](0027-telegram-as-a-backend-client.md) | Telegram is one more client of the backend, linked with a one-time code | Accepted; sending answers whole replaced by 0028 |
 | [0028](0028-telegram-answers-stream-as-drafts.md) | Telegram answers stream as message drafts | Accepted |
+| [0029](0029-jev-triage-with-deepseek-fallback.md) | Jev triages every message, DeepSeek is the fallback, and a fixed reply covers both failing | Accepted |

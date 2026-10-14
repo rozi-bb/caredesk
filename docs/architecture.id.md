@@ -12,7 +12,7 @@ Dokumen ini menjelaskan cara CareDesk dibangun. Apa yang dibangun ada di [prd.md
 
 ## 1. Gambaran umum
 
-Semua bagian aplikasi jalan di komputer lokal. Yang di luar hanya tiga: DeepSeek (model), server Telegram, dan LangSmith (tracing).
+Semua bagian aplikasi jalan di komputer lokal. Yang di luar ada empat: DeepSeek (model), TypeSafe (Jev, untuk triage), server Telegram, dan LangSmith (tracing).
 
 Ada dua pintu masuk: UI chat Chainlit di browser dan bot Telegram. Keduanya hanya klien, jadi tidak menyimpan logika atau data sendiri dan cuma memanggil backend ([ADR-0024](adr/0024-chainlit-ui-as-backend-client.md), [ADR-0027](adr/0027-telegram-as-a-backend-client.md)). Backend (FastAPI) mengecek siapa penggunanya, lalu menjalankan graph CareDesk di dalam prosesnya sendiri ([ADR-0020](adr/0020-own-backend-not-agent-server.md)). Semua data ada di satu database Postgres di Docker ([ADR-0021](adr/0021-one-postgres-database.md)).
 
@@ -37,6 +37,7 @@ flowchart LR
     subgraph ext["Layanan luar"]
         TS["Server Telegram"]
         DS["DeepSeek"]
+        JEV["TypeSafe<br/>Jev"]
         LS["LangSmith"]
     end
 
@@ -50,6 +51,7 @@ flowchart LR
     G --> PG
     G --> IDX
     G --> DS
+    G -->|"triage"| JEV
     G -.->|"trace"| LS
 ```
 
@@ -58,7 +60,7 @@ Cara membacanya:
 1. Pengguna chat lewat browser (Chainlit) atau Telegram. Bot mengambil pesan dari server Telegram sendiri, jadi tidak perlu alamat publik.
 2. Klien meneruskan pesan ke API backend, bersama bukti identitas: token login dari Chainlit, atau kunci bot plus id Telegram pengirim dari bot.
 3. API mencari akun di Postgres, lalu menjalankan graph dengan identitas akun itu.
-4. Graph membaca data panti dari Postgres dan aturan dari indeks, lalu memanggil DeepSeek untuk menyusun jawaban. Riwayat percakapan juga disimpan di Postgres.
+4. Graph bertanya ke Jev apakah pesannya darurat, klinis, atau biasa. Untuk pertanyaan biasa, graph membaca data panti dari Postgres dan aturan dari indeks, lalu memanggil DeepSeek untuk menyusun jawaban. Riwayat percakapan juga disimpan di Postgres.
 5. Jawaban dikirim balik sedikit demi sedikit (streaming) ke klien. Setiap run tercatat di LangSmith.
 
 Untuk development, graph yang sama tetap bisa dijalankan di Studio lewat `langgraph dev`. Di sana identitas diketik manual.
@@ -72,33 +74,41 @@ flowchart TD
     START((mulai)) --> T["triage"]
     T -->|darurat| E["emergency_response"]
     T -->|klinis| C["decline_clinical"]
+    T -->|tidak bisa dicek| U["triage_unavailable"]
     T -->|biasa| A["agent"]
     A -->|panggil tool| TL["tools"]
     TL --> A
     A -->|jawaban akhir| END((selesai))
     E --> END
     C --> END
+    U --> END
 ```
 
 Graph dibuat di `build_graph()` dalam `src/agent/graph.py`.
 
 | Node | Tugasnya | Pakai model? |
 |---|---|---|
-| `triage` | Memberi label `emergency`, `clinical`, atau `normal` | Hanya kalau tidak ada kata kunci yang cocok |
+| `triage` | Memberi label `emergency`, `clinical`, atau `normal`; `unavailable` kalau tidak ada classifier yang menjawab | Jev; DeepSeek kalau Jev gagal |
 | `emergency_response` | Mencatat insiden dan membalas dengan langkah darurat yang sudah baku | Tidak |
 | `decline_clinical` | Membalas dengan pesan baku "silakan tanya perawat" | Tidak |
+| `triage_unavailable` | Membalas dengan teks baku "pesan tidak bisa dicek" dan kontak darurat | Tidak |
 | `agent` | Menjawab, atau meminta tool | Ya |
 | `tools` | Menjalankan tool yang diminta, lalu kembali ke `agent` | Tidak |
 
 ### Triage
 
-1. **Cek kata kunci.** Darurat yang jelas ("not breathing", "fire") langsung masuk jalur darurat tanpa memanggil model ([ADR-0016](adr/0016-emergency-keyword-precheck.md)).
-2. **Classifier.** Kalau tidak ada kata kunci, `deepseek-flash` memberi label. Outputnya terstruktur lewat `with_structured_output(TriageResult, method="json_mode")`, jadi hasilnya objek yang sudah dicek, bukan teks bebas, dan kode langsung membaca `result.category`. Dipakai JSON mode karena mode thinking DeepSeek menolak metode default (tool call paksa).
-3. **Aman saat gagal.** Kegagalan apa pun (timeout 15 detik, JSON rusak, label tidak dikenal) dianggap darurat dan dicatat di log. Alarm palsu itu murah, darurat yang terlewat tidak. Ada integration test yang memanggil classifier asli, jadi classifier yang rusak tidak bisa bersembunyi di balik aturan ini.
+Setiap pesan masuk ke classifier; tidak ada jalan pintas kata kunci ([ADR-0029](adr/0029-jev-triage-with-deepseek-fallback.md)).
+
+1. **Jev.** `jev_probabilities()` mengirim satu pertanyaan `choice` (`JEV_QUESTION`) ke Jev, model keputusan dari TypeSafe: `emergency`, `clinical`, atau `normal`, masing-masing dijelaskan apa cakupannya dan apa yang bukan. Jev mengembalikan peluang untuk tiap label. Timeout 3 detik, tanpa retry; panggilannya tercatat di LangSmith sebagai `jev_triage`.
+2. **Condong ke darurat.** `jev_route()` memilih `emergency` kalau peluangnya 0,3 atau lebih (`EMERGENCY_THRESHOLD`), walaupun label lain lebih tinggi; selain itu, label tertinggi yang menang. Label di luar tiga yang diharapkan dianggap gagal.
+3. **Cadangan.** Kalau Jev gagal karena apa pun, `deepseek-flash` yang memberi label. Outputnya terstruktur lewat `with_structured_output(TriageResult, method="json_mode")`, jadi hasilnya objek yang sudah dicek, bukan teks bebas, dan kode langsung membaca `result.category`. Dipakai JSON mode karena mode thinking DeepSeek menolak metode default (tool call paksa). Timeout 10 detik, tanpa retry.
+4. **Dua-duanya tidak menjawab.** Route-nya `unavailable`, dan kedua kegagalan dicatat di log. Tidak ada insiden yang dicatat dan agent tidak dijalankan.
+
+Integration test memanggil Jev asli dan classifier cadangan asli secara langsung, jadi classifier yang rusak tidak bisa bersembunyi di balik jalur sesudahnya.
 
 ### Balasan baku
 
-Balasan darurat dan klinis berupa teks tetap, bukan output model, jadi tidak mungkin salah. Kalau insiden gagal dicatat, balasan darurat tetap dikirim ([ADR-0017](adr/0017-emergency-records-never-block.md)).
+Balasan darurat, klinis, dan "tidak bisa dicek" berupa teks tetap, bukan output model, jadi tidak mungkin salah. Ketiganya memuat kontak darurat, yang ditulis sekali di `agent/triage.py`. Kalau insiden gagal dicatat, balasan darurat tetap dikirim ([ADR-0017](adr/0017-emergency-records-never-block.md)).
 
 ### State
 
@@ -107,14 +117,15 @@ Balasan darurat dan klinis berupa teks tetap, bukan output model, jadi tidak mun
 | `messages` | Isi percakapan |
 | `route` | Hasil triage untuk pesan terakhir |
 | `incident_id` | Insiden yang dicatat untuk kasus darurat; kosong kalau tidak ada |
+| `triage_by` | Classifier yang memutuskan: `jev`, `deepseek`, atau kosong kalau tidak ada yang menjawab |
 
-Pemanggil hanya bisa mengirim `messages`. `route` dan `incident_id` diisi oleh graph, jadi tidak ada yang bisa melewati triage.
+Pemanggil hanya bisa mengirim `messages`. `route`, `incident_id`, dan `triage_by` diisi oleh graph, jadi tidak ada yang bisa melewati triage.
 
 ### Contoh
 
 Staf bertanya "What's on Mary Johnson's schedule today?":
 
-1. `triage`: tidak ada kata kunci, classifier menjawab `normal`
+1. `triage`: Jev menjawab `normal`, dengan peluang `emergency` jauh di bawah 0,3
 2. `agent`: memanggil `get_schedule(resident="Mary Johnson", day="today")`
 3. `tools`: mengecek izin, mengembalikan jadwal hari ini
 4. `agent`: menulis jawaban
@@ -241,7 +252,7 @@ Kode: `src/telegram_bot/` (`bot.py` koneksi ke Telegram, `relay.py` balasan, `st
 
 | Kegunaan | Model |
 |---|---|
-| Triage | `deepseek-flash` |
+| Triage | Jev (`jev-latest`, TypeSafe); `deepseek-flash` sebagai cadangan ([ADR-0029](adr/0029-jev-triage-with-deepseek-fallback.md)) |
 | Jawaban | `deepseek-flash`; `deepseek-v4-pro` kalau evaluasi menunjukkan perlu |
 | Embedding | `BAAI/bge-small-en-v1.5`, lokal lewat fastembed ([ADR-0015](adr/0015-local-embeddings-in-memory-index.md)) |
 | Juri evaluasi | Belum diputuskan (bagian 11) |
@@ -252,12 +263,12 @@ Setiap run di-trace di LangSmith (project `caredesk`) dan diberi tag `user_id` d
 
 ## 10. Evaluasi
 
-Evaluasi dijalankan di LangSmith untuk empat kategori di bagian 8 prd.md, dengan pengecekan berbasis kode ([ADR-0014](adr/0014-code-based-evaluators.md)). Dataset ada di `evals/suites.py`, diberi versi lewat namanya. Setiap evaluasi membuat database Postgres sementara dari seed, lalu menghapusnya setelah selesai. Unit test melakukan hal yang sama.
+Evaluasi dijalankan di LangSmith untuk empat kategori di bagian 8 prd.md, dengan pengecekan berbasis kode ([ADR-0014](adr/0014-code-based-evaluators.md)). Dataset ada di `evals/suites.py`, diberi versi lewat namanya. Setiap evaluasi membuat database Postgres sementara dari seed, lalu menghapusnya setelah selesai. Unit test melakukan hal yang sama. `evals/compare_triage.py` menjalankan kasus safety langsung ke Jev dan classifier cadangan, beberapa kali, untuk membandingkan akurasi, konsistensi, dan kecepatan, serta mengecek ambang batas darurat.
 
 | Lapisan | Yang dicek | Memanggil API? |
 |---|---|---|
-| Unit test | Filter izin, routing, login, isolasi percakapan, streaming, klien backend di UI (model palsu) | Tidak |
-| Integration test | Seluruh graph dengan model asli | Ya |
+| Unit test | Filter izin, routing, tiga jalur triage, login, isolasi percakapan, streaming, klien backend di UI (model palsu) | Tidak |
+| Integration test | Seluruh graph dengan model asli; Jev dan classifier cadangan asli | Ya |
 | Evaluasi | Jawaban, sitasi, keamanan, kontrol akses | Ya |
 
 ## 11. Keputusan yang belum diambil

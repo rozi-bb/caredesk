@@ -21,6 +21,8 @@ from agent.graph import build_graph
 from agent.tools import TOOLS
 from agent.triage import TriageResult
 
+from .fakes import jev_by_keyword
+
 pytestmark = pytest.mark.anyio
 
 
@@ -62,7 +64,7 @@ async def test_second_turn_sees_the_first_turn() -> None:
     model = RecordingModel(
         messages=replies("Nice to meet you, Rozi.", "Your name is Rozi.")
     )
-    graph = build_graph(model, NORMAL, checkpointer=InMemorySaver())
+    graph = build_graph(model, NORMAL, InMemorySaver(), jev=jev_by_keyword)
 
     await graph.ainvoke({"messages": [HumanMessage("My name is Rozi.")]}, thread("a"))
     await graph.ainvoke({"messages": [HumanMessage("What is my name?")]}, thread("a"))
@@ -78,7 +80,7 @@ async def test_second_turn_sees_the_first_turn() -> None:
 
 async def test_threads_do_not_share_history() -> None:
     model = RecordingModel(messages=replies("Hello.", "Hello again."))
-    graph = build_graph(model, NORMAL, checkpointer=InMemorySaver())
+    graph = build_graph(model, NORMAL, InMemorySaver(), jev=jev_by_keyword)
 
     await graph.ainvoke({"messages": [HumanMessage("My name is Rozi.")]}, thread("a"))
     await graph.ainvoke({"messages": [HumanMessage("What is my name?")]}, thread("b"))
@@ -100,7 +102,7 @@ async def test_tools_use_the_identity_from_the_run_context(db_env: str) -> None:
         model = RecordingModel(
             messages=replies(call("get_billing", resident="Harold Bennett"), "Done.")
         )
-        result = await build_graph(model, NORMAL).ainvoke(
+        result = await build_graph(model, NORMAL, jev=jev_by_keyword).ainvoke(
             {"messages": [HumanMessage("Show Harold's bill.")]},
             context=Context(user_id=ids[user], role="family"),
         )

@@ -51,7 +51,7 @@ Requires Python 3.11+, [uv](https://docs.astral.sh/uv/), and Docker.
    cp .env.example .env
    ```
 
-   You need a LangSmith API key, a DeepSeek API key, and an `AUTH_SECRET` (the file says how to generate one).
+   You need a LangSmith API key, a DeepSeek API key, a TypeSafe API key for triage (Jev, from typesafe.ai), and an `AUTH_SECRET` (the file says how to generate one).
 
 3. Start Postgres:
 

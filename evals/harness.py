@@ -103,6 +103,7 @@ def make_target(db: str) -> Callable[[dict[str, Any]], Any]:
         return {
             "answer": messages[-1].text,
             "route": result.get("route", "normal"),
+            "triage_by": result.get("triage_by"),
             "incident_id": result.get("incident_id"),
             "tool_calls": [
                 call["name"]
@@ -137,13 +138,14 @@ async def run_suite(client: Client, suite: Suite, db: str) -> bool:
         print(f"Created dataset {suite.dataset} with {len(examples)} examples")
 
     from agent.graph import MODEL_NAME
+    from agent.triage import JEV_MODEL
 
     results = await client.aevaluate(
         make_target(db),
         data=suite.dataset,
         evaluators=suite.evaluators,
         experiment_prefix=suite.name,
-        metadata={"model": MODEL_NAME, "git": git_revision()},
+        metadata={"model": MODEL_NAME, "triage": JEV_MODEL, "git": git_revision()},
         max_concurrency=4,
     )
     failures: list[str] = []

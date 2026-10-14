@@ -33,12 +33,25 @@ def answering(*replies: AIMessage, streaming: bool = True) -> FakeModel:
     return FakeModel(messages=itertools.cycle(script), disable_streaming=not streaming)
 
 
+OUTAGE = "[both classifiers down]"  # a message both fake classifiers fail on
+
+
+def _label(text: str) -> str:
+    if OUTAGE in text:
+        raise TimeoutError("fake classifier down")
+    text = text.lower()
+    return "emergency" if "fell" in text else "clinical" if "dose" in text else "normal"
+
+
 def by_keyword(messages: list[BaseMessage]) -> TriageResult:
-    text = messages[-1].text.lower()
-    category = (
-        "emergency" if "fell" in text else "clinical" if "dose" in text else "normal"
-    )
-    return TriageResult(category=category, reason="test")  # type: ignore[arg-type]
+    """Fake fallback classifier."""
+    return TriageResult(category=_label(messages[-1].text), reason="test")  # type: ignore[arg-type]
+
+
+async def jev_by_keyword(text: str) -> dict[str, float]:
+    """Fake Jev: certain of the label the keyword rule picks."""
+    label = _label(text)
+    return {name: float(name == label) for name in ("emergency", "clinical", "normal")}
 
 
 def app_with_fakes(
@@ -53,6 +66,8 @@ def app_with_fakes(
         telegram_bot_key=BOT_KEY if telegram else None,
     )
     return create_app(
-        lambda cp: build_graph(model or answering(), RunnableLambda(by_keyword), cp),
+        lambda cp: build_graph(
+            model or answering(), RunnableLambda(by_keyword), cp, jev=jev_by_keyword
+        ),
         settings,
     )

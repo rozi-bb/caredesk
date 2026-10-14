@@ -23,6 +23,7 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "python-telegram-bot>=22",
     "segno>=1.6.6",
+    "typesafe-sdk==0.7.4",
     "uvicorn[standard]>=0.41.0",
 ]
 

@@ -55,7 +55,7 @@ Graph = CompiledStateGraph[Any, Any, Any, Any]
 GraphFactory = Callable[[AsyncPostgresSaver], Graph]
 
 # Nodes whose reply is fixed text rather than streamed model tokens.
-FIXED_REPLY_NODES = ("emergency_response", "decline_clinical")
+FIXED_REPLY_NODES = ("emergency_response", "decline_clinical", "triage_unavailable")
 ERROR_REPLY = "Something went wrong on our side. Please try again."
 # Shown by every client, so the wording lives here once (ADR-0027).
 TOPICS = "Ask me about schedules, activities, visits, billing, or the home's rules."

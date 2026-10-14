@@ -1,6 +1,6 @@
 # ADR-0006: Triage first, fixed responses, fail toward emergency
 
-- Status: Accepted. The keyword pre-check left open below was decided in [ADR-0016](0016-emergency-keyword-precheck.md)
+- Status: Accepted. The keyword pre-check left open below was decided in [ADR-0016](0016-emergency-keyword-precheck.md). "If triage errors or times out, the message is treated as an emergency" is superseded by [ADR-0029](0029-jev-triage-with-deepseek-fallback.md); triage first and fixed responses still hold
 - Date: 2026-10-03
 
 ## Context

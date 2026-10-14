@@ -1,6 +1,6 @@
 # ADR-0016: A narrow keyword check before the triage model
 
-- Status: Accepted
+- Status: Superseded by [ADR-0029](0029-jev-triage-with-deepseek-fallback.md)
 - Date: 2026-10-03
 
 ## Context

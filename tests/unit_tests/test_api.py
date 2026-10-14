@@ -11,10 +11,15 @@ import pytest
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, ToolMessage
 
-from agent.triage import CLINICAL_RESPONSE, EMERGENCY_NOTICE, EMERGENCY_RESPONSE
+from agent.triage import (
+    CLINICAL_RESPONSE,
+    EMERGENCY_NOTICE,
+    EMERGENCY_RESPONSE,
+    UNAVAILABLE_RESPONSE,
+)
 from backend.security import create_token
 
-from .fakes import ANNE, ANSWER, PETER, SECRET, answering
+from .fakes import ANNE, ANSWER, OUTAGE, PETER, SECRET, answering
 from .helpers import answer_text, chat, new_thread, sign_in, usage_rows
 
 # ---------- business flow (step 18) ----------
@@ -112,6 +117,9 @@ def test_fixed_replies_are_streamed_too(client: TestClient, test_password: str) 
     assert emergency[-1] == ("done", {"route": "emergency"})
     clinical = chat(client, headers, thread, "Should he take an extra dose?")
     assert answer_text(clinical) == CLINICAL_RESPONSE
+    unchecked = chat(client, headers, thread, f"Is lunch at noon? {OUTAGE}")
+    assert answer_text(unchecked) == UNAVAILABLE_RESPONSE
+    assert unchecked[-1] == ("done", {"route": "unavailable"})
 
 
 def test_text_before_a_tool_call_is_kept_apart_from_the_answer(
