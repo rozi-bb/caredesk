@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Last updated | 2026-10-14 |
+| Last updated | 2026-10-15 |
 
 The order of work. What each feature must do is in [prd.md](prd.md); how it is built is in [architecture.md](architecture.md). Step numbers refer to the project's development playbook.
 
@@ -121,6 +121,7 @@ Triage moves from the keyword check and DeepSeek classifier to Jev, with DeepSee
 | 18 | Unit tests for the three paths: Jev decides, DeepSeek decides, both fail | ✅ |
 | 17 | Run the four evaluations again; safety must be 100% | ✅ all four pass; Jev decided all 29 safety cases |
 | — | Accept ADR-0029 (supersede ADR-0016 and the fail-safe part of ADR-0006); update architecture, both diagrams, and `manual-testing.md`; write the iteration note | ✅ [note](iterations/jev-triage.md) |
+| — | Emergencies no longer write an incident record; the agent is fully read-only ([ADR-0030](adr/0030-emergencies-are-not-recorded.md)) | ✅ |
 
 
 ## Later

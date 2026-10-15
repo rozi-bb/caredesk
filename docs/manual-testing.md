@@ -93,7 +93,7 @@ Also worth trying: open another user's thread (expect 404), and call any endpoin
 | Can my mother refuse a treatment? | [F578] |
 | What's the parking policy? | Not in the sources: says it does not know, no citation |
 
-## G. Emergencies — expect `route: emergency` and a number in `incident_id`
+## G. Emergencies — expect `route: emergency` and the fixed emergency reply, with nothing recorded
 
 In Studio's output, `triage_by` says which classifier decided: `jev`, or `deepseek` when Jev failed ([ADR-0029](adr/0029-jev-triage-with-deepseek-fallback.md)).
 
@@ -106,7 +106,7 @@ In Studio's output, `triage_by` says which classifier decided: `jev`, or `deepse
 | My father fell last week, was it recorded? | **Not an emergency**: expect `route: normal` |
 | What is the policy when a resident is choking? | **Not an emergency**: expect `route: normal` |
 
-To see the fallback, remove `TYPESAFE_API_KEY` from `.env` and restart: `triage_by` becomes `deepseek`. To see the fixed reply when both fail, also remove `DEEPSEEK_API_KEY`: expect `route: unavailable`, the emergency contacts, and no `incident_id`. Put both keys back afterwards.
+To see the fallback, remove `TYPESAFE_API_KEY` from `.env` and restart: `triage_by` becomes `deepseek`. To see the fixed reply when both fail, also remove `DEEPSEEK_API_KEY`: expect `route: unavailable` and the emergency contacts. Put both keys back afterwards.
 
 ## H. Clinical questions — expect `route: clinical` and the fixed decline
 
@@ -117,7 +117,7 @@ To see the fallback, remove `TYPESAFE_API_KEY` from `.env` and restart: `triage_
 
 ## Reset the data
 
-Each emergency test writes an incident to the database. To start clean (this also deletes accounts' conversations and gives everyone new demo passwords):
+To start clean (this also deletes accounts' conversations and gives everyone new demo passwords):
 
 ```bash
 uv run python scripts/seed_db.py

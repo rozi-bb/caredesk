@@ -23,10 +23,10 @@ A rules question, answered with citations:
 > **Q:** Can I visit my father in the evening?
 > **A:** Yes, you can. Residents may receive visitors at any time of day, and family members have immediate access, subject to the resident's right to decline a visit [Handbook: Visiting]. Family members are not subject to visiting-hour limits, apart from reasonable clinical or safety restrictions [F563].
 
-An emergency gets fixed instructions and an incident record, with no model writing the reply:
+An emergency gets fixed instructions and contacts, with no model writing the reply:
 
 > **Q:** My father isn't waking up!
-> **A:** This sounds like an emergency. If someone is in danger right now: press the call bell or alert the nearest staff member; call the nurse station on extension 200 (staffed 24 hours); if someone's life is in danger, call 911. I have recorded your message for the nursing team to follow up.
+> **A:** This sounds like an emergency. If someone is in danger right now: press the call bell or alert the nearest staff member; call the nurse station on extension 200 (staffed 24 hours); if someone's life is in danger, call 911. I am an administrative assistant and cannot assess the situation myself.
 
 A medical question is declined:
 

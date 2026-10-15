@@ -67,7 +67,7 @@ uv run python -m evals.compare_triage   # Jev vs the fallback classifier on the 
 - `src/agent/records.py`: every database query, with its permission filter
 - `src/agent/tools.py`: the tools the model can call; thin wrappers over `records.py` and `rules.py`
 - `src/agent/rules.py`: rules search over `corpus/` (F-tags and the handbook)
-- `src/agent/triage.py`: emergency and clinical triage (the Jev question and routing rule, the fallback prompt), fixed responses, and the emergency incident write
+- `src/agent/triage.py`: emergency and clinical triage (the Jev question and routing rule, the fallback prompt), and the fixed responses
 - `corpus/`: the rules text that is indexed; `scripts/build_rules_index.py` builds `data/rules_index.json`
 - `src/agent/db/`: database connections and the fixed `REFERENCE_DATE` that stands for "today"
 - `src/backend/`: the HTTP API: sign-in, conversations, the streaming chat endpoint (`main.py`), app-table queries (`store.py`), passwords and tokens (`security.py`)

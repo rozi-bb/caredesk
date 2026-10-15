@@ -4,7 +4,7 @@
 |---|---|
 | Status | Draft |
 | Release | 2 (backend and chat UI) |
-| Last updated | 2026-10-14 |
+| Last updated | 2026-10-15 |
 
 How CareDesk is built. What it does is in [prd.md](prd.md); why each choice was made is in [adr/](adr/).
 
@@ -87,7 +87,7 @@ The graph is built in `build_graph()` in `src/agent/graph.py`.
 | Node | What it does | Model? | Code |
 |---|---|---|---|
 | `triage` | Labels the message `emergency`, `clinical`, or `normal`; `unavailable` if no classifier answers | Jev; DeepSeek if Jev fails | `triage()`; `src/agent/triage.py` |
-| `emergency_response` | Records an incident and replies with fixed emergency steps | No | `emergency_response()`; `record_emergency()` |
+| `emergency_response` | Replies with fixed emergency steps and contacts; records nothing ([ADR-0030](adr/0030-emergencies-are-not-recorded.md)) | No | `emergency_response()` |
 | `decline_clinical` | Replies with a fixed "please ask the nurse" message | No | `decline_clinical()` |
 | `triage_unavailable` | Replies with a fixed "could not check your message" text and the emergency contacts | No | `triage_unavailable()` |
 | `agent` | Answers, or asks for tools | Yes | `agent()` |
@@ -100,13 +100,13 @@ Every message goes to a classifier; there is no keyword shortcut ([ADR-0029](adr
 1. **Jev.** `jev_probabilities()` asks Jev, TypeSafe's decision model, one `choice` question (`JEV_QUESTION`): `emergency`, `clinical`, or `normal`, each described by what it covers and what it is not for. Jev returns a probability for each label. Timeout 3 seconds, no retries; the call is traced in LangSmith as `jev_triage`.
 2. **Lean toward emergency.** `jev_route()` picks `emergency` when its probability is 0.3 or more (`EMERGENCY_THRESHOLD`), even if another label scores higher; otherwise the highest label wins. Labels other than the three expected ones count as a failure.
 3. **Fallback.** If Jev fails for any reason, `deepseek-flash` labels the message. It uses structured output, `with_structured_output(TriageResult, method="json_mode")`, so the reply comes back as a checked object instead of free text and the code reads `result.category` directly. JSON mode, because DeepSeek's thinking mode rejects the default method (a forced tool call). Timeout 10 seconds, no retries.
-4. **Neither answers.** The route is `unavailable` and both failures are logged. No incident is written and the agent does not run.
+4. **Neither answers.** The route is `unavailable` and both failures are logged. The agent does not run.
 
 Integration tests call the real Jev and the real fallback classifier directly, so a broken one cannot hide behind the path after it.
 
 ### Fixed replies
 
-Emergency, clinical, and "could not check" replies are fixed text, not model output, so they cannot go wrong. All three carry the emergency contacts, written once in `agent/triage.py`. If the incident cannot be written, the emergency reply is still sent ([ADR-0017](adr/0017-emergency-records-never-block.md)).
+Emergency, clinical, and "could not check" replies are fixed text, not model output, so they cannot go wrong. All three carry the emergency contacts, written once in `agent/triage.py`. None of them touches the database.
 
 ### State
 
@@ -114,10 +114,9 @@ Emergency, clinical, and "could not check" replies are fixed text, not model out
 |---|---|
 | `messages` | The conversation |
 | `route` | Triage result for the latest message |
-| `incident_id` | The incident written for an emergency; empty otherwise |
 | `triage_by` | Which classifier decided: `jev`, `deepseek`, or empty when neither answered |
 
-Callers can only send `messages`. The graph sets `route`, `incident_id`, and `triage_by`, so nobody can skip triage.
+Callers can only send `messages`. The graph sets `route` and `triage_by`, so nobody can skip triage.
 
 ### Example
 
@@ -158,7 +157,7 @@ All tools are read-only.
 - Every query applies the caller's permissions before returning rows (`src/agent/records.py`).
 - Identity reaches tools through the injected `ToolRuntime`, which the model cannot see or fill in.
 - The model only picks a tool and its parameters. It never writes SQL.
-- Tool connections are read-only: Postgres itself rejects any write on them. Only the emergency incident uses a writable connection.
+- Every connection the agent opens is read-only: Postgres itself rejects any write on it. The agent never writes to the home's records.
 
 ## 5. Backend API
 
@@ -237,7 +236,7 @@ The bot's `.env` holds only `BACKEND_URL`, `TELEGRAM_BOT_TOKEN`, and `TELEGRAM_B
 
 | Store | Holds | Written by |
 |---|---|---|
-| Postgres: records | Residents, family links, staff, schedules, activities, visits, incidents, billing | Seed script with a fixed seed; at runtime, only emergency incidents |
+| Postgres: records | Residents, family links, staff, schedules, activities, visits, incidents, billing | Seed script with a fixed seed; never at runtime |
 | Postgres: app | Accounts, thread owners and titles, usage events | Seed script (accounts); backend |
 | Postgres: checkpoints | Messages per thread | LangGraph's checkpointer |
 | Rules index (`data/rules_index.json`) | 204 passages from 14 F-tags and the handbook, embedded locally | `scripts/build_rules_index.py` |

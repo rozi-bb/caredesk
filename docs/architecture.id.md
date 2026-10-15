@@ -4,7 +4,7 @@
 |---|---|
 | Status | Draft |
 | Rilis | 2 (backend dan UI chat) |
-| Terakhir diubah | 2026-10-14 |
+| Terakhir diubah | 2026-10-15 |
 
 Dokumen ini menjelaskan cara CareDesk dibangun. Apa yang dibangun ada di [prd.md](prd.md), alasan tiap keputusan ada di [adr/](adr/).
 
@@ -89,7 +89,7 @@ Graph dibuat di `build_graph()` dalam `src/agent/graph.py`.
 | Node | Tugasnya | Pakai model? |
 |---|---|---|
 | `triage` | Memberi label `emergency`, `clinical`, atau `normal`; `unavailable` kalau tidak ada classifier yang menjawab | Jev; DeepSeek kalau Jev gagal |
-| `emergency_response` | Mencatat insiden dan membalas dengan langkah darurat yang sudah baku | Tidak |
+| `emergency_response` | Membalas dengan langkah darurat dan kontak yang sudah baku; tidak mencatat apa pun ([ADR-0030](adr/0030-emergencies-are-not-recorded.md)) | Tidak |
 | `decline_clinical` | Membalas dengan pesan baku "silakan tanya perawat" | Tidak |
 | `triage_unavailable` | Membalas dengan teks baku "pesan tidak bisa dicek" dan kontak darurat | Tidak |
 | `agent` | Menjawab, atau meminta tool | Ya |
@@ -102,13 +102,13 @@ Setiap pesan masuk ke classifier; tidak ada jalan pintas kata kunci ([ADR-0029](
 1. **Jev.** `jev_probabilities()` mengirim satu pertanyaan `choice` (`JEV_QUESTION`) ke Jev, model keputusan dari TypeSafe: `emergency`, `clinical`, atau `normal`, masing-masing dijelaskan apa cakupannya dan apa yang bukan. Jev mengembalikan peluang untuk tiap label. Timeout 3 detik, tanpa retry; panggilannya tercatat di LangSmith sebagai `jev_triage`.
 2. **Condong ke darurat.** `jev_route()` memilih `emergency` kalau peluangnya 0,3 atau lebih (`EMERGENCY_THRESHOLD`), walaupun label lain lebih tinggi; selain itu, label tertinggi yang menang. Label di luar tiga yang diharapkan dianggap gagal.
 3. **Cadangan.** Kalau Jev gagal karena apa pun, `deepseek-flash` yang memberi label. Outputnya terstruktur lewat `with_structured_output(TriageResult, method="json_mode")`, jadi hasilnya objek yang sudah dicek, bukan teks bebas, dan kode langsung membaca `result.category`. Dipakai JSON mode karena mode thinking DeepSeek menolak metode default (tool call paksa). Timeout 10 detik, tanpa retry.
-4. **Dua-duanya tidak menjawab.** Route-nya `unavailable`, dan kedua kegagalan dicatat di log. Tidak ada insiden yang dicatat dan agent tidak dijalankan.
+4. **Dua-duanya tidak menjawab.** Route-nya `unavailable`, dan kedua kegagalan dicatat di log. Agent tidak dijalankan.
 
 Integration test memanggil Jev asli dan classifier cadangan asli secara langsung, jadi classifier yang rusak tidak bisa bersembunyi di balik jalur sesudahnya.
 
 ### Balasan baku
 
-Balasan darurat, klinis, dan "tidak bisa dicek" berupa teks tetap, bukan output model, jadi tidak mungkin salah. Ketiganya memuat kontak darurat, yang ditulis sekali di `agent/triage.py`. Kalau insiden gagal dicatat, balasan darurat tetap dikirim ([ADR-0017](adr/0017-emergency-records-never-block.md)).
+Balasan darurat, klinis, dan "tidak bisa dicek" berupa teks tetap, bukan output model, jadi tidak mungkin salah. Ketiganya memuat kontak darurat, yang ditulis sekali di `agent/triage.py`. Tidak ada yang menyentuh database.
 
 ### State
 
@@ -116,10 +116,9 @@ Balasan darurat, klinis, dan "tidak bisa dicek" berupa teks tetap, bukan output 
 |---|---|
 | `messages` | Isi percakapan |
 | `route` | Hasil triage untuk pesan terakhir |
-| `incident_id` | Insiden yang dicatat untuk kasus darurat; kosong kalau tidak ada |
 | `triage_by` | Classifier yang memutuskan: `jev`, `deepseek`, atau kosong kalau tidak ada yang menjawab |
 
-Pemanggil hanya bisa mengirim `messages`. `route`, `incident_id`, dan `triage_by` diisi oleh graph, jadi tidak ada yang bisa melewati triage.
+Pemanggil hanya bisa mengirim `messages`. `route` dan `triage_by` diisi oleh graph, jadi tidak ada yang bisa melewati triage.
 
 ### Contoh
 
@@ -160,7 +159,7 @@ Semua tool hanya membaca.
 - Setiap query menerapkan izin pemanggil sebelum mengembalikan data (`src/agent/records.py`).
 - Identitas sampai ke tool lewat `ToolRuntime` yang diinjeksi. Model tidak bisa melihat atau mengisinya.
 - Model hanya memilih tool dan parameternya. Model tidak pernah menulis SQL.
-- Koneksi untuk tool bersifat read-only: Postgres sendiri menolak penulisan apa pun lewat koneksi itu. Hanya pencatatan insiden darurat yang memakai koneksi yang bisa menulis.
+- Semua koneksi yang dibuka agent bersifat read-only: Postgres sendiri menolak penulisan apa pun lewat koneksi itu. Agent tidak pernah menulis ke data panti.
 
 ## 5. API backend
 
@@ -239,7 +238,7 @@ Kode: `src/telegram_bot/` (`bot.py` koneksi ke Telegram, `relay.py` balasan, `st
 
 | Penyimpanan | Isinya | Ditulis oleh |
 |---|---|---|
-| Postgres: data panti | Penghuni, tautan keluarga, staf, jadwal, kegiatan, kunjungan, insiden, tagihan | Seed script dengan seed tetap; saat aplikasi jalan, hanya insiden darurat |
+| Postgres: data panti | Penghuni, tautan keluarga, staf, jadwal, kegiatan, kunjungan, insiden, tagihan | Seed script dengan seed tetap; tidak pernah saat aplikasi jalan |
 | Postgres: aplikasi | Akun, pemilik dan judul percakapan, usage | Seed script (akun); backend |
 | Postgres: checkpoint | Pesan per percakapan | Checkpointer LangGraph |
 | Indeks aturan (`data/rules_index.json`) | 204 potongan teks dari 14 F-tag dan handbook, di-embed secara lokal | `scripts/build_rules_index.py` |

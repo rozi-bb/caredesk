@@ -29,15 +29,12 @@ from agent.tools import TOOLS
 from agent.triage import (
     CLINICAL_RESPONSE,
     EMERGENCY_RESPONSE,
-    NOT_RECORDED,
-    RECORDED,
     TRIAGE_PROMPT,
     UNAVAILABLE_RESPONSE,
     TriageResult,
     TriageRoute,
     jev_probabilities,
     jev_route,
-    record_emergency,
 )
 
 MODEL_NAME = "deepseek-flash"
@@ -84,7 +81,6 @@ class State(MessagesState):
     """The conversation, plus the triage outcome for the latest message."""
 
     route: NotRequired[TriageRoute]
-    incident_id: NotRequired[int | None]
     # Which classifier decided the route; None when neither could.
     triage_by: NotRequired[Literal["jev", "deepseek"] | None]
 
@@ -153,7 +149,7 @@ def build_graph(
         text = _latest_human_text(state["messages"])
         try:
             route: TriageRoute = jev_route(await (jev or jev_probabilities)(text))
-            return {"route": route, "incident_id": None, "triage_by": "jev"}
+            return {"route": route, "triage_by": "jev"}
         except Exception:
             log.exception("Jev triage failed; using the fallback classifier")
         try:
@@ -162,19 +158,14 @@ def build_graph(
                 config=_metadata(ctx),
             )
             route = TriageResult.model_validate(result).category
-            return {"route": route, "incident_id": None, "triage_by": "deepseek"}
+            return {"route": route, "triage_by": "deepseek"}
         except Exception:
             log.exception("Fallback triage failed too; the message cannot be checked")
-        return {"route": "unavailable", "incident_id": None, "triage_by": None}
+        return {"route": "unavailable", "triage_by": None}
 
-    def emergency_response(state: State, runtime: Runtime[Context]) -> dict[str, Any]:
-        """Record the emergency and return fixed instructions."""
-        ctx = runtime.context or Context()
-        incident = record_emergency(ctx, _latest_human_text(state["messages"]))
-        text = EMERGENCY_RESPONSE.format(
-            recorded=RECORDED if incident else NOT_RECORDED
-        )
-        return {"messages": [AIMessage(text)], "incident_id": incident}
+    def emergency_response(state: State) -> dict[str, Any]:
+        """Return the fixed emergency instructions and contacts."""
+        return {"messages": [AIMessage(EMERGENCY_RESPONSE)]}
 
     def decline_clinical(state: State) -> dict[str, Any]:
         """Return the fixed decline for medical questions."""
@@ -201,7 +192,7 @@ def build_graph(
             "unavailable": "triage_unavailable",
         }.get(state["route"], "agent")
 
-    # Callers send only messages; route and incident_id are set by triage alone.
+    # Callers send only messages; route and triage_by are set by triage alone.
     builder: StateGraph[State, Context, MessagesState, State] = StateGraph(
         State, input_schema=MessagesState, context_schema=Context
     )

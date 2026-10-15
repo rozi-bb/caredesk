@@ -11,8 +11,7 @@ from agent.context import Context
 from agent.graph import build_graph
 from agent.triage import (
     CLINICAL_RESPONSE,
-    NOT_RECORDED,
-    RECORDED,
+    EMERGENCY_RESPONSE,
     UNAVAILABLE_RESPONSE,
     TriageResult,
     jev_route,
@@ -64,26 +63,6 @@ UNUSED = RunnableLambda(lambda _: pytest.fail("the fallback must not be called")
 
 def no_agent() -> NoCallModel:
     return NoCallModel(messages=iter([AIMessage(content="unused")]))
-
-
-def family_id(db: str, name: str) -> int:
-    with psycopg.connect(db) as conn:
-        row = conn.execute(
-            "SELECT id FROM family_members WHERE full_name = %s", (name,)
-        ).fetchone()
-        assert row is not None
-        return int(row[0])
-
-
-def incident(db: str, incident_id: int) -> tuple[Any, ...]:
-    with psycopg.connect(db) as conn:
-        row = conn.execute(
-            "SELECT resident_id, reported_by_staff_id, category, status, description "
-            "FROM incidents WHERE id = %s",
-            (incident_id,),
-        ).fetchone()
-        assert row is not None
-        return tuple(row)
 
 
 def incident_count(db: str) -> int:
@@ -151,27 +130,21 @@ async def test_when_both_fail_the_user_gets_the_contacts_and_nothing_else(
     reply = result["messages"][-1].text
     assert reply == UNAVAILABLE_RESPONSE
     assert "extension 200" in reply and "911" in reply
-    assert result["incident_id"] is None
     assert incident_count(db_env) == before
 
 
 # ---------- emergencies and fixed replies ----------
 
 
-async def test_emergency_is_recorded(db_env: str) -> None:
+async def test_emergency_gets_the_contacts_and_writes_nothing(db_env: str) -> None:
+    before = incident_count(db_env)
     graph = build_graph(no_agent(), UNUSED, jev=jev_says("emergency"))
-    karen = Context(user_id=family_id(db_env, "Karen Mitchell"), role="family")
-
-    result = await ask(graph, "My mother is not breathing!", karen)
-
+    result = await ask(graph, "My mother is not breathing!", Context())
     assert result["route"] == "emergency"
-    assert (
-        "911" in result["messages"][-1].text and RECORDED in result["messages"][-1].text
-    )
-    resident, reporter, category, status, text = incident(db_env, result["incident_id"])
-    assert (category, status, reporter) == ("emergency", "needs_action", None)
-    assert resident is not None  # Karen is linked to exactly one resident
-    assert "not breathing" in text
+    reply = result["messages"][-1].text
+    assert reply == EMERGENCY_RESPONSE
+    assert "extension 200" in reply and "911" in reply
+    assert incident_count(db_env) == before
 
 
 async def test_emergency_ranked_second_by_jev_is_still_an_emergency(
@@ -184,16 +157,7 @@ async def test_emergency_ranked_second_by_jev_is_still_an_emergency(
     assert result["route"] == "emergency"
 
 
-async def test_resident_left_empty_when_it_cannot_be_known(db_env: str) -> None:
-    graph = build_graph(no_agent(), UNUSED, jev=jev_says("emergency"))
-    linda = Context(
-        user_id=family_id(db_env, "Linda Moreno"), role="family"
-    )  # two residents
-    result = await ask(graph, "Something is very wrong, please send someone", linda)
-    assert incident(db_env, result["incident_id"])[0] is None
-
-
-async def test_emergency_reply_survives_a_database_failure(
+async def test_emergency_reply_needs_no_database(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv(
@@ -202,16 +166,13 @@ async def test_emergency_reply_survives_a_database_failure(
     )
     graph = build_graph(no_agent(), UNUSED, jev=jev_says("emergency"))
     result = await ask(graph, "Help, she collapsed", Context())
-    assert result["incident_id"] is None
-    assert NOT_RECORDED in result["messages"][-1].text
+    assert result["messages"][-1].text == EMERGENCY_RESPONSE
 
 
 def test_callers_can_only_send_messages() -> None:
     graph = build_graph(no_agent(), UNUSED, jev=jev_says("normal"))
     assert set(graph.get_input_jsonschema()["properties"]) == {"messages"}
-    assert {"route", "incident_id", "triage_by"} <= set(
-        graph.get_output_jsonschema()["properties"]
-    )
+    assert {"route", "triage_by"} <= set(graph.get_output_jsonschema()["properties"])
 
 
 async def test_route_sent_by_caller_is_ignored(db_env: str) -> None:

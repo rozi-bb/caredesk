@@ -36,8 +36,3 @@ def connect_readonly() -> Connection:
     conn = psycopg.connect(database_url(), row_factory=dict_row)
     conn.read_only = True
     return conn
-
-
-def connect_writable() -> Connection:
-    """Open a connection that may write. Only emergency incident records use this."""
-    return psycopg.connect(database_url(), row_factory=dict_row)

@@ -4,7 +4,7 @@
 |---|---|
 | Status | Draft |
 | Release | Telegram channel (release 2 shipped as `v0.2.1`) |
-| Last updated | 2026-10-14 |
+| Last updated | 2026-10-15 |
 
 ## 1. Problem
 
@@ -45,10 +45,10 @@ A resident can have several family members linked, each with their own access le
 | F1 | **Conversation memory.** The assistant remembers earlier messages in the same conversation, including after a restart. |
 | F2 | **Answers from operational data.** The assistant answers questions about schedules, activities, visits, incidents, and billing, limited to what the user's role may see (section 3). |
 | F3 | **Answers from rules, with citations.** The assistant answers questions about resident rights, visiting, complaints, and restraint or abuse rules, and cites the F-tag or handbook section it used. |
-| F4 | **Emergency handling.** Messages describing an emergency ("I fell", "she isn't waking up") get emergency instructions and contacts immediately, and create an incident record marked as needing action. |
+| F4 | **Emergency handling.** Messages describing an emergency ("I fell", "she isn't waking up") get emergency instructions and contacts immediately. Nothing is recorded ([ADR-0030](adr/0030-emergencies-are-not-recorded.md)). |
 | F5 | **Clinical questions declined.** Questions asking for diagnosis, medication, or treatment advice are declined politely and redirected to nursing staff. |
 
-Release 1 is read-only. The incident record in F4 is the only data the assistant creates.
+The assistant is read-only: it never writes to the home's records.
 
 ## 5a. Functional requirements — release 2
 

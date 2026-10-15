@@ -1,6 +1,6 @@
 # ADR-0017: Emergency records never block the emergency response
 
-- Status: Accepted
+- Status: Superseded by [ADR-0030](0030-emergencies-are-not-recorded.md): emergencies are no longer recorded
 - Date: 2026-10-03
 
 ## Context

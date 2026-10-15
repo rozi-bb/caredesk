@@ -104,7 +104,6 @@ def make_target(db: str) -> Callable[[dict[str, Any]], Any]:
             "answer": messages[-1].text,
             "route": result.get("route", "normal"),
             "triage_by": result.get("triage_by"),
-            "incident_id": result.get("incident_id"),
             "tool_calls": [
                 call["name"]
                 for m in messages

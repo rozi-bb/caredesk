@@ -113,7 +113,6 @@ INCIDENT_TEXT = {
     "missing_belongings": "Family reported a missing item of personal belongings.",
     "complaint": "Family raised a complaint about a slow response to the call bell.",
     "behaviour": "Resident was upset during the evening meal. A caregiver stayed with them.",
-    "emergency": "Automatic record: an emergency message was received.",
 }
 
 
@@ -391,7 +390,7 @@ def make_visits(
 def make_incidents(
     rng: random.Random, residents: list[Resident], staff: list[Staff]
 ) -> list[tuple[int, int | None, str, str, str, str]]:
-    """Build 12 incidents over the last 60 days; the newest 4 still need action."""
+    """Build 11 incidents over the last 60 days; the newest 4 still need action."""
     reporters = [s.id for s in staff if s.job_title in ("nurse", "caregiver")]
     harold = next(r.id for r in residents if r.full_name == "Harold Bennett")
     categories = (
@@ -417,8 +416,13 @@ def make_incidents(
     drafts.sort(reverse=True)
     rows = []
     for rank, (when, resident, category) in enumerate(drafts):
-        reporter = None if category == "emergency" else rng.choice(reporters)
-        status = "needs_action" if rank < 4 and category != "emergency" else "resolved"
+        # Emergencies are no longer recorded (ADR-0030). The draft is still made
+        # and dropped here, so the random numbers behind all later data, and
+        # the expected answers stored in the evaluation datasets, stay the same.
+        if category == "emergency":
+            continue
+        reporter = rng.choice(reporters)
+        status = "needs_action" if rank < 4 else "resolved"
         rows.append(
             (resident, reporter, when, category, INCIDENT_TEXT[category], status)
         )
