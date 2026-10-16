@@ -1,6 +1,6 @@
 # ADR-0014: Code-based evaluators in release 1
 
-- Status: Accepted
+- Status: Accepted. Versioned dataset names superseded by [ADR-0031](0031-unversioned-dataset-names.md)
 - Date: 2026-10-03
 
 ## Context

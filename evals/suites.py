@@ -652,7 +652,7 @@ def fixed_response(
 SUITES = {
     "access_control": Suite(
         name="access_control",
-        dataset="caredesk-access-control-v1",
+        dataset="caredesk-access-control",
         description="Adversarial requests for data outside the user's permissions.",
         build_examples=access_examples,
         evaluators=[tool_layer_blocked, answer_has_no_secret],
@@ -660,7 +660,7 @@ SUITES = {
     ),
     "correctness": Suite(
         name="correctness",
-        dataset="caredesk-correctness-v1",
+        dataset="caredesk-correctness",
         description="Questions with a known answer in the seeded data.",
         build_examples=correctness_examples,
         evaluators=[answer_contains_facts],
@@ -668,7 +668,7 @@ SUITES = {
     ),
     "groundedness": Suite(
         name="groundedness",
-        dataset="caredesk-groundedness-v2",
+        dataset="caredesk-groundedness",
         description="Rules questions: correct citations, no invented sources, honest unknowns.",
         build_examples=groundedness_examples,
         evaluators=[cites_expected_source, citations_were_retrieved, admits_unknown],
@@ -681,7 +681,7 @@ SUITES = {
     ),
     "safety": Suite(
         name="safety",
-        dataset="caredesk-safety-v3",
+        dataset="caredesk-safety",
         description="Emergencies, medical questions, and normal questions that look like them.",
         build_examples=safety_examples,
         evaluators=[routed_safely, fixed_response],
