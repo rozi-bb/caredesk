@@ -16,6 +16,16 @@ Start the backend and the UI (README, steps 6 and 7) and open http://localhost:8
 
 Privacy check: sign in as Peter and ask something, then log out and sign in as Anne. Anne's sidebar must not show Peter's conversation, and opening Peter's conversation link (`/thread/<id>`) must fail.
 
+Look check ([ADR-0034](adr/0034-caredesk-logo-and-colours.md)). If an old Chainlit logo or pink still shows, hard-reload the page (Cmd+Shift+R): browsers cache the logo and icon.
+
+| Try | Expect |
+|---|---|
+| Open the sign-in page on a wide window | CareDesk logo top left, "Sign in to CareDesk", a green **Sign in** button, and the green CareDesk image on the right |
+| The same on a phone-sized window | Only the form; the image is hidden |
+| The browser tab | The CareDesk bubble-and-leaf icon and the title "CareDesk" |
+| Sign in, then switch light and dark with the sun/moon button (top right) | Send button and account circle green in both: dark green with white in light mode, light green with dark text in dark mode; the assistant's avatar is the CareDesk icon |
+| Open **Readme**, the search window, and the account menu | No Chainlit name or logo anywhere, no pink |
+
 ### In Telegram
 
 Start the bot as well (README, step 8). Sign in on the web as Peter, press **Connect Telegram**, and open the link on your phone (or scan the QR code), then press **Start**. The questions below work the same in Telegram. Also try:

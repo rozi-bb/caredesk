@@ -134,8 +134,8 @@ The web chat still shows Chainlit's own branding: its logo on the sign-in page a
 | D2 | Replace Chainlit's logo on the sign-in page and in the header with the CareDesk logo, and its favicon with the CareDesk icon | ✅ sign-in logo and favicon; the chat page has no header logo in Chainlit 2.12, and the assistant avatar shows the CareDesk icon |
 | D3 | Sign-in page: CareDesk title and short subtitle instead of "Login to access the app" (translations), and a CareDesk image instead of Chainlit's pattern (`login_page_image`) | ✅ title and image; Chainlit has no subtitle, so the description is in the image |
 | D4 | CareDesk colours for buttons and links in light and dark mode, through a Chainlit theme file | ✅ `src/ui/public/theme.json` |
-| D5 | Check every page in light and dark mode and on a phone-sized window: sign-in, chat, sidebar, Connect Telegram; no Chainlit logo or name left anywhere | ⬜ |
-| 18 | UI tests still pass; update `manual-testing.md`; write the iteration note | ⬜ |
+| D5 | Check every page in light and dark mode and on a phone-sized window: sign-in, chat, sidebar, Connect Telegram; no Chainlit logo or name left anywhere | ✅ sign-in, chat, old conversations, sidebar, search, Readme, account menu, Disconnect Telegram; the link-preview meta tags still named Chainlit and now point at CareDesk |
+| 18 | UI tests still pass; update `manual-testing.md`; write the iteration note | ✅ [note](iterations/caredesk-look.md) |
 
 ## Later
 

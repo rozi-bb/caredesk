@@ -39,6 +39,7 @@ Dark mode uses the light green with dark text, not the dark green with white tex
 - The title is "Sign in to CareDesk" and the button says "Sign in", set in `src/ui/.chainlit/translations/en-US.json`. Chainlit 2.12's sign-in page has no subtitle, so the one-line description lives in the image instead.
 - The large image is `src/ui/public/login.svg`: the CareDesk green with faint bubble and leaf shapes, and the logo in white with "Administrative assistant for Evergreen Care Home" in the middle. Chainlit crops it to fill half the screen, so everything that matters stays in the centre, and it is hidden below 1024 pixels wide. Chainlit gives the image the alt text "Image", so its words are decoration only; the page title carries the meaning.
 - `login_page_image_dark_filter = "none"` in `config.toml`. Without a value, Chainlit darkens and greys the image in dark mode; "none" is not a Tailwind filter class, so no filter is applied.
+- `custom_meta_url` and `custom_meta_image_url` point at the local app and `login.svg`. Left empty, Chainlit fills the page's link-preview tags (`og:url`, `og:image`) with its own GitHub page and banner.
 - Chainlit writes its default translations into `.chainlit/translations/` and never overwrites a file that exists. That folder stays git-ignored except `en-US.json`, the only language the UI uses (`language = "en-US"`). A Chainlit upgrade that adds new texts will not add them to this file; compare it with the package's `en-US.json` after upgrading.
 
 ## How the files were made
