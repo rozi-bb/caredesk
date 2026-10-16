@@ -123,6 +123,16 @@ Runs the evaluation suites in LangSmith against a freshly seeded throwaway datab
 uv run python -m evals.run
 ```
 
+## Cost
+
+Prints the estimated cost per account, role, and channel from the usage records ([ADR-0033](docs/adr/0033-cost-per-user-report.md)):
+
+```bash
+uv run python scripts/cost_report.py
+```
+
+The same split from LangSmith's traces, with total cost, requests, and average cost per request at the top, is the "CareDesk cost" dashboard. Create it once with `uv run --env-file .env python scripts/create_cost_dashboard.py`; add `--replace` to rebuild it after changing the charts.
+
 ## Documentation
 
 | Document | What it covers |

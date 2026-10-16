@@ -258,6 +258,8 @@ The bot's `.env` holds only `BACKEND_URL`, `TELEGRAM_BOT_TOKEN`, and `TELEGRAM_B
 
 Every run is traced in LangSmith (project `caredesk`) and tagged with `user_id` and `role`; runs from the backend also carry `account_id`, `thread_id`, and `channel`. Quality and cost can be split per user and role, and the same tokens are in `usage_events`.
 
+Cost per user comes from two places ([ADR-0033](adr/0033-cost-per-user-report.md)). `scripts/cost_report.py` prices the tokens in `usage_events` with the table in `backend/costs.py`: DeepSeek at its peak or off-peak price for the hour, every input token as a cache miss, and Jev as a fixed estimate per request. The "CareDesk cost" dashboard in LangSmith shows the cost of root traces split by `account_id`, `role`, and `channel`, using LangSmith's own price table.
+
 ## 10. Evaluation
 
 Evaluations run in LangSmith against the four categories in prd.md section 8, using code-based checks ([ADR-0014](adr/0014-code-based-evaluators.md)). Datasets are in `evals/suites.py`, versioned by name. Each run seeds a throwaway Postgres database and drops it afterwards; unit tests do the same. `evals/compare_triage.py` runs the safety cases through Jev and the fallback classifier directly, several times each, to compare accuracy, consistency, and speed and to check the emergency threshold.

@@ -83,7 +83,7 @@ CareDesk is a portfolio project and is never deployed ([ADR-0026](adr/0026-no-de
 
 | # | Step | Status |
 |---|---|---|
-| 25 | Cost per user from trace metadata and usage records | ⬜ |
+| 25 | Cost per user from trace metadata and usage records ([ADR-0033](adr/0033-cost-per-user-report.md)) | ✅ [note](iterations/cost-per-user.md) |
 
 Not planned, because nothing is deployed: server, domain, and HTTPS (step 20), production keys (21), scheduled backups (22), the deploy procedure (23), uptime monitoring (26), and rate limiting, since only the owner can reach the app.
 

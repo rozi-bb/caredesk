@@ -57,6 +57,7 @@ uv run ruff format .             # format
 uv run mypy --strict src         # type check
 uv run python -m evals.run       # LangSmith evaluations (real API calls)
 uv run python -m evals.compare_triage   # Jev vs the fallback classifier on the safety cases (real API calls)
+uv run python scripts/cost_report.py    # estimated cost per account, role, and channel, from usage records
 ```
 
 ## Layout
@@ -70,7 +71,7 @@ uv run python -m evals.compare_triage   # Jev vs the fallback classifier on the 
 - `src/agent/triage.py`: emergency and clinical triage (the Jev question and routing rule, the fallback prompt), and the fixed responses
 - `corpus/`: the rules text that is indexed; `scripts/build_rules_index.py` builds `data/rules_index.json`
 - `src/agent/db/`: database connections and the fixed `REFERENCE_DATE` that stands for "today"
-- `src/backend/`: the HTTP API: sign-in, conversations, the streaming chat endpoint (`main.py`), app-table queries (`store.py`), passwords and tokens (`security.py`)
+- `src/backend/`: the HTTP API: sign-in, conversations, the streaming chat endpoint (`main.py`), app-table queries (`store.py`), passwords and tokens (`security.py`), cost from usage records (`costs.py`)
 - `src/ui/`: the Chainlit chat UI (`app.py`) and its backend client (`client.py`); runs from its own folder with its own `.env`, and must never import `agent`, `backend`, or model code
 - `src/telegram_bot/`: the Telegram bot (`bot.py`), what it replies (`relay.py`), streaming answers as drafts (`streaming.py`), its backend client (`backend.py`), and Telegram formatting (`format.py`); runs with its own `.env`, and must never import `agent`, `backend`, `ui`, or model code
 - `migrations/`: Alembic migrations; every schema change is a new file here
