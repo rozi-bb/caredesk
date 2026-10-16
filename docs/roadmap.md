@@ -139,7 +139,7 @@ The web chat still shows Chainlit's own branding: its logo on the sign-in page a
 
 ## Later
 
-Not ordered yet. The order is decided after release 2, based on what monitoring shows.
+Not ordered yet. Quality monitoring is not built while nobody else uses the app ([ADR-0032](adr/0032-no-quality-or-error-monitoring.md)), so the order is decided by the owner.
 
 - WhatsApp channel, after Telegram. It needs a Meta Business account and a public address for its webhook
 - Resident access
