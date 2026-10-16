@@ -165,6 +165,8 @@ cython_debug/
 # Generated data (rebuild with scripts/seed_db.py)
 /data/
 
-# Chainlit (src/ui): uploads and generated translations
+# Chainlit (src/ui): uploads and generated translations. en-US is the only
+# language the UI uses and holds CareDesk's own texts, so it is kept (ADR-0034).
 /src/ui/.files/
-/src/ui/.chainlit/translations/
+/src/ui/.chainlit/translations/*
+!/src/ui/.chainlit/translations/en-US.json

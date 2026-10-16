@@ -39,3 +39,4 @@ Format: Status, Date, Context, Decision, Alternatives considered, Consequences. 
 | [0031](0031-unversioned-dataset-names.md) | Evaluation datasets have no version in their name | Accepted |
 | [0032](0032-no-quality-or-error-monitoring.md) | No quality or error monitoring while nobody else uses the app | Accepted |
 | [0033](0033-cost-per-user-report.md) | Cost per user is computed by a report script from usage records | Accepted |
+| [0034](0034-caredesk-logo-and-colours.md) | CareDesk logo and colours | Accepted |

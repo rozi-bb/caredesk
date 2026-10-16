@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>CareDesk</title>
+  <style>
+    .bubble { fill: #1F6F5F; }
+    .leaf { fill: #FFFFFF; }
+    .vein { stroke: #1F6F5F; }
+    @media (prefers-color-scheme: dark) {
+      .bubble { fill: #6CC5B0; }
+      .leaf { fill: #212121; }
+      .vein { stroke: #6CC5B0; }
+    }
+  </style>
+  <path class="bubble" d="M17 4h30a13 13 0 0 1 13 13v20a13 13 0 0 1-13 13H28L13 61l1-11a13 13 0 0 1-10-13V17A13 13 0 0 1 17 4Z"/>
+  <path class="leaf" d="M18 40c0-15 11-26 28-27 0 16-10 27-25 27Z"/>
+  <path class="vein" d="M20 38 37 21" fill="none" stroke-width="3" stroke-linecap="round"/>
+</svg>

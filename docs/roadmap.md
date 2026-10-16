@@ -124,6 +124,19 @@ Triage moves from the keyword check and DeepSeek classifier to Jev, with DeepSee
 | — | Emergencies no longer write an incident record; the agent is fully read-only ([ADR-0030](adr/0030-emergencies-are-not-recorded.md)) | ✅ |
 
 
+## CareDesk look in the chat UI
+
+The web chat still shows Chainlit's own branding: its logo on the sign-in page and in the header, its favicon, the "Login to access the app" title, and its dark pattern next to the sign-in form. Users should see CareDesk instead. Only the Chainlit app's look changes: config, translations, and files in `src/ui/public/`. The backend, the agent, and Telegram are not touched. Each option is checked against the Chainlit docs for the pinned version (2.12) before it is used.
+
+| # | Step | Status |
+|---|---|---|
+| D1 | Design a simple CareDesk logo (wordmark and icon), in a light and a dark version, with the colours it uses written down; record the choice in an ADR | ✅ [ADR-0034](adr/0034-caredesk-logo-and-colours.md) |
+| D2 | Replace Chainlit's logo on the sign-in page and in the header with the CareDesk logo, and its favicon with the CareDesk icon | 🔄 files in `src/ui/public/`; sign-in logo and favicon checked, header after signing in not yet |
+| D3 | Sign-in page: CareDesk title and short subtitle instead of "Login to access the app" (translations), and a CareDesk image instead of Chainlit's pattern (`login_page_image`) | ✅ title and image; Chainlit has no subtitle, so the description is in the image |
+| D4 | CareDesk colours for buttons and links in light and dark mode, through a Chainlit theme file | ⬜ |
+| D5 | Check every page in light and dark mode and on a phone-sized window: sign-in, chat, sidebar, Connect Telegram; no Chainlit logo or name left anywhere | ⬜ |
+| 18 | UI tests still pass; update `manual-testing.md`; write the iteration note | ⬜ |
+
 ## Later
 
 Not ordered yet. The order is decided after release 2, based on what monitoring shows.
