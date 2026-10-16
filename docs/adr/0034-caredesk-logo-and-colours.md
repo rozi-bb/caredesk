@@ -22,6 +22,18 @@ The web chat showed Chainlit's logo, favicon, and colours, so users saw the fram
   The leaf is white in light mode and `#212121` in dark mode, so it reads as a cut-out.
 - **Files**, all SVG, in `src/ui/public/`: `logo_light.svg`, `logo_dark.svg`, and `favicon.svg`. The favicon switches its colours with the browser's dark mode. Chainlit 2.12 serves `public/logo_{light,dark}.*` and `public/favicon.*` in any format, so no PNG copies are needed.
 
+## Buttons, links, and focus
+
+`src/ui/public/theme.json` overrides three of Chainlit's colour variables, and leaves the backgrounds, sidebar, and body text as Chainlit draws them:
+
+| Variable | Light | Dark | Contrast |
+|---|---|---|---|
+| `--primary` (buttons, links, active controls) | `#1F6F5F` | `#6CC5B0` | links 6.0:1 on white, 7.9:1 on `#212121` |
+| `--primary-foreground` (text on buttons) | white | `#102A24` | 6.0:1 and 7.4:1 on the button |
+| `--ring` (keyboard focus outline) | `#1F6F5F` | `#6CC5B0` | |
+
+Dark mode uses the light green with dark text, not the dark green with white text: the dark green almost disappears against Chainlit's `#212121`, and white on a middle green reaches only 3.4:1. Chainlit opens in dark mode unless the user picks light, so most users see the light green first.
+
 ## Sign-in page
 
 - The title is "Sign in to CareDesk" and the button says "Sign in", set in `src/ui/.chainlit/translations/en-US.json`. Chainlit 2.12's sign-in page has no subtitle, so the one-line description lives in the image instead.
@@ -42,4 +54,4 @@ The icon is drawn by hand in SVG on a 64-unit grid. The wordmark outlines were g
 ## Consequences
 
 - Browsers cache the old logo and favicon; a hard reload is needed to see the change.
-- The buttons are still Chainlit pink; step D4 moves them to the CareDesk green.
+- The chat page in Chainlit 2.12 has no logo in its header; the CareDesk icon appears there only as the assistant's avatar, which Chainlit takes from the favicon.

@@ -1,0 +1,14 @@
+{
+  "variables": {
+    "light": {
+      "--primary": "168 56% 28%",
+      "--primary-foreground": "0 0% 100%",
+      "--ring": "168 56% 28%"
+    },
+    "dark": {
+      "--primary": "166 43% 60%",
+      "--primary-foreground": "166 45% 11%",
+      "--ring": "166 43% 60%"
+    }
+  }
+}
