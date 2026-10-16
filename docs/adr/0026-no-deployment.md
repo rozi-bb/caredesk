@@ -1,6 +1,6 @@
 # ADR-0026: CareDesk runs locally only; no deployment
 
-- Status: Accepted
+- Status: Accepted; monitoring steps 24 and 26 dropped by [ADR-0032](0032-no-quality-or-error-monitoring.md)
 - Date: 2026-10-13
 - Replaces the "package C comes later" part of [ADR-0019](0019-release-2-thin-local-app.md)
 

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Last updated | 2026-10-15 |
+| Last updated | 2026-10-16 |
 
 The order of work. What each feature must do is in [prd.md](prd.md); how it is built is in [architecture.md](architecture.md). Step numbers refer to the project's development playbook.
 
@@ -79,15 +79,15 @@ Not planned: packages and usage limits (step 14) and payments (step 15). CareDes
 
 ## Package C — monitor, locally
 
-CareDesk is a portfolio project and is never deployed ([ADR-0026](adr/0026-no-deployment.md)). Monitoring is still built, on the app running locally.
+CareDesk is a portfolio project and is never deployed ([ADR-0026](adr/0026-no-deployment.md)). Only cost per user is built, on the app running locally.
 
 | # | Step | Status |
 |---|---|---|
-| 24 | Quality monitoring: traces, Insights, user feedback | ⬜ |
 | 25 | Cost per user from trace metadata and usage records | ⬜ |
-| 26 | Error monitoring; spending alert at the model provider | ⬜ |
 
 Not planned, because nothing is deployed: server, domain, and HTTPS (step 20), production keys (21), scheduled backups (22), the deploy procedure (23), uptime monitoring (26), and rate limiting, since only the owner can reach the app.
+
+Not planned, because nobody else uses the app ([ADR-0032](adr/0032-no-quality-or-error-monitoring.md)): quality monitoring with Insights and user feedback (step 24), and error monitoring with a spending alert (26). Errors still show in LangSmith traces, and the DeepSeek balance is prepaid.
 
 ## Telegram channel
 

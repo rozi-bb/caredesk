@@ -31,9 +31,10 @@ Format: Status, Date, Context, Decision, Alternatives considered, Consequences. 
 | [0023](0023-signed-tokens-for-sign-in.md) | Signed tokens for sign-in | Accepted |
 | [0024](0024-chainlit-ui-as-backend-client.md) | The chat UI is a Chainlit app that only calls the backend | Accepted; history part superseded by 0025 |
 | [0025](0025-sidebar-history-from-the-backend.md) | Sidebar history read from the backend | Accepted |
-| [0026](0026-no-deployment.md) | CareDesk runs locally only; no deployment | Accepted |
+| [0026](0026-no-deployment.md) | CareDesk runs locally only; no deployment | Accepted; steps 24 and 26 dropped by 0032 |
 | [0027](0027-telegram-as-a-backend-client.md) | Telegram is one more client of the backend, linked with a one-time code | Accepted; sending answers whole replaced by 0028 |
 | [0028](0028-telegram-answers-stream-as-drafts.md) | Telegram answers stream as message drafts | Accepted |
 | [0029](0029-jev-triage-with-deepseek-fallback.md) | Jev triages every message, DeepSeek is the fallback, and a fixed reply covers both failing | Accepted |
 | [0030](0030-emergencies-are-not-recorded.md) | Emergencies get a fixed reply and are not recorded | Accepted |
 | [0031](0031-unversioned-dataset-names.md) | Evaluation datasets have no version in their name | Accepted |
+| [0032](0032-no-quality-or-error-monitoring.md) | No quality or error monitoring while nobody else uses the app | Accepted |
